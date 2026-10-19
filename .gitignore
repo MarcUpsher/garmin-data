@@ -1,0 +1,28 @@
+# .NET build output
+**/bin/
+**/obj/
+.vs/
+
+# Local databases and Garmin activity exports contain personal health data
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.fit
+*.FIT
+*.csv
+*.gpx
+*.tcx
+
+# Local configuration and secrets
+.env
+.env.*
+!*.example
+appsettings.*.local.json
+secrets.json
+
+# Editor and OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
