@@ -2,7 +2,9 @@ using Garmin.Data.Entities;
 using Dynastream.Fit;
 using GarminActivity = Garmin.Data.Entities.Activity;
 
-internal static class FitActivityDecoder
+namespace Garmin.Data.Importing;
+
+public static class FitActivityDecoder
 {
     public static GarminActivity Decode(string path, byte[] sourceBytes, string sha256)
     {
@@ -23,9 +25,11 @@ internal static class FitActivityDecoder
             decoder.Read(stream);
         }
 
-        if (sessions.Count != 1)
-            throw new InvalidDataException($"Expected one session summary; found {sessions.Count}.");
+        if (sessions.Count == 0)
+            throw new InvalidDataException("FIT activity contains no session summary.");
 
+        // A small number of Garmin files contain multiple session messages for one recorded activity.
+        // Keep the first session as the activity-level summary while retaining all laps and records.
         var session = sessions[0];
         var activity = new GarminActivity
         {

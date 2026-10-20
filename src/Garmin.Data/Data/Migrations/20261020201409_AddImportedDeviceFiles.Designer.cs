@@ -3,6 +3,7 @@ using System;
 using Garmin.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Garmin.Data.Data.Migrations
 {
     [DbContext(typeof(GarminDbContext))]
-    partial class GarminDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261020201409_AddImportedDeviceFiles")]
+    partial class AddImportedDeviceFiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
@@ -307,6 +310,44 @@ namespace Garmin.Data.Data.Migrations
                     b.ToTable("ActivitySourceFiles");
                 });
 
+            modelBuilder.Entity("Garmin.Data.Entities.ImportedDeviceFile", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ActivityId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DeviceKey")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastModifiedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastVerifiedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RelativePath")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityId");
+
+                    b.HasIndex("DeviceKey", "RelativePath")
+                        .IsUnique();
+
+                    b.ToTable("ImportedDeviceFiles");
+                });
+
             modelBuilder.Entity("Garmin.Data.Entities.ActivityExtraField", b =>
                 {
                     b.HasOne("Garmin.Data.Entities.Activity", "Activity")
@@ -351,9 +392,22 @@ namespace Garmin.Data.Data.Migrations
                     b.Navigation("Activity");
                 });
 
+            modelBuilder.Entity("Garmin.Data.Entities.ImportedDeviceFile", b =>
+                {
+                    b.HasOne("Garmin.Data.Entities.Activity", "Activity")
+                        .WithMany("ImportedDeviceFiles")
+                        .HasForeignKey("ActivityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Activity");
+                });
+
             modelBuilder.Entity("Garmin.Data.Entities.Activity", b =>
                 {
                     b.Navigation("ExtraFields");
+
+                    b.Navigation("ImportedDeviceFiles");
 
                     b.Navigation("Laps");
 

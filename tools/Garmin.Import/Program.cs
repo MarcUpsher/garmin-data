@@ -1,17 +1,89 @@
 using Garmin.Data;
-using Garmin.Data.Entities;
+using Garmin.Data.Importing;
+using Garmin.Importing;
 using Microsoft.EntityFrameworkCore;
 
 if (args.Length == 0 || args[0] is "--help" or "-h")
 {
     Console.WriteLine("Usage: Garmin.Import <FIT-directory-or-watch-mount|Garmin-CSV-file> [--database <path>]");
     Console.WriteLine("Reads FIT files from GARMIN/Activity or imports Garmin Connect activity summaries from CSV.");
+    Console.WriteLine("       Garmin.Import catalog-fit <FIT-archive.zip-or-directory> [--output <catalog.csv>]");
+    Console.WriteLine("Catalogs FIT files in ZIP archives without importing them or extracting the archives.");
+    Console.WriteLine("       Garmin.Import import-garmin-export <DI_CONNECT-directory> [--catalog <catalog.csv>] [--database <path>] [--supplement-database <old.db>]");
+    Console.WriteLine("Rebuilds canonical activities by linking Garmin Connect summaries with matching FIT files.");
     return args.Length == 0 ? 2 : 0;
+}
+
+if (args[0].Equals("catalog-fit", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine("Usage: Garmin.Import catalog-fit <FIT-archive.zip-or-directory> [--output <catalog.csv>]");
+        return 2;
+    }
+
+    var catalogInput = Path.GetFullPath(args[1]);
+    var archives = File.Exists(catalogInput)
+        ? new[] { catalogInput }
+        : Directory.Exists(catalogInput)
+            ? Directory.EnumerateFiles(catalogInput, "*.zip", SearchOption.TopDirectoryOnly)
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray()
+            : [];
+    if (archives.Length == 0 || archives.Any(path => !Path.GetExtension(path).Equals(".zip", StringComparison.OrdinalIgnoreCase)))
+    {
+        Console.Error.WriteLine($"No ZIP archives found at: {catalogInput}");
+        return 2;
+    }
+
+    var outputPath = Path.GetFullPath(GetOption(args, "--output")
+        ?? Path.Combine(File.Exists(catalogInput) ? Path.GetDirectoryName(catalogInput)! : catalogInput,
+            "garmin-fit-catalog.csv"));
+    Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+    await using var catalogOutput = new StreamWriter(outputPath, append: false, new System.Text.UTF8Encoding(false));
+    var catalog = await FitArchiveCataloger.CatalogAsync(archives, catalogOutput);
+
+    Console.WriteLine($"Catalog: {outputPath}");
+    Console.WriteLine($"Scanned {catalog.FilesScanned} FIT files in {catalog.ArchivesScanned} archive(s); {catalog.FilesParsed} parsed, {catalog.FilesFailed} had errors, {catalog.DuplicateContents} duplicate content hashes.");
+    foreach (var (type, count) in catalog.FileTypes.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        Console.WriteLine($"  {type}: {count}");
+    return catalog.FilesFailed == 0 ? 0 : 1;
+}
+
+if (args[0].Equals("import-garmin-export", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine("Usage: Garmin.Import import-garmin-export <DI_CONNECT-directory> [--catalog <catalog.csv>] [--database <path>] [--supplement-database <old.db>]");
+        return 2;
+    }
+
+    var exportDirectory = Path.GetFullPath(args[1]);
+    var catalogPath = Path.GetFullPath(GetOption(args, "--catalog")
+        ?? Path.Combine(exportDirectory, "garmin-fit-catalog.csv"));
+    var exportDatabasePath = Path.GetFullPath(GetOption(args, "--database") ?? Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "garmin-data", "activities.db"));
+    Directory.CreateDirectory(Path.GetDirectoryName(exportDatabasePath)!);
+    var exportOptions = new DbContextOptionsBuilder<GarminDbContext>()
+        .UseSqlite($"Data Source={exportDatabasePath}")
+        .Options;
+    await using var exportDb = new GarminDbContext(exportOptions);
+    await exportDb.Database.MigrateAsync();
+    Console.WriteLine($"SQLite database: {exportDatabasePath}");
+
+    var exportResult = await GarminConnectExportActivityImporter.ImportAsync(
+        exportDirectory, catalogPath, exportDb, GetOption(args, "--supplement-database"));
+    Console.WriteLine($"Summaries imported: {exportResult.SummariesImported}");
+    Console.WriteLine($"FIT files linked: {exportResult.FitFilesLinked}; FIT-only activities: {exportResult.FitOnlyActivitiesImported}; supplemental FITs linked: {exportResult.SupplementalFitFilesLinked}");
+    Console.WriteLine($"FIT files skipped: {exportResult.FitFilesSkipped}; failed: {exportResult.Failed}");
+    Console.WriteLine($"Stored {exportResult.RecordCount} record samples and {exportResult.LapCount} lap summaries.");
+    foreach (var error in exportResult.Errors) Console.Error.WriteLine(error);
+    return exportResult.Failed == 0 ? 0 : 1;
 }
 
 var inputPath = Path.GetFullPath(args[0]);
 var isCsv = Path.GetExtension(inputPath).Equals(".csv", StringComparison.OrdinalIgnoreCase);
-var sourceDirectory = isCsv ? null : ResolveActivityDirectory(args[0]);
+var sourceDirectory = isCsv ? null : FitDirectoryImporter.ResolveActivityDirectory(args[0]);
 if (isCsv ? !File.Exists(inputPath) : !Directory.Exists(sourceDirectory))
 {
     Console.Error.WriteLine(isCsv ? $"CSV file not found: {inputPath}" : $"Activity directory not found: {sourceDirectory}");
@@ -41,62 +113,12 @@ if (isCsv)
     return result.Failed == 0 ? 0 : 1;
 }
 
-var files = Directory.EnumerateFiles(sourceDirectory!, "*", SearchOption.AllDirectories)
-    .Where(x => string.Equals(Path.GetExtension(x), ".fit", StringComparison.OrdinalIgnoreCase))
-    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-    .ToArray();
-
-var imported = 0;
-var skipped = 0;
-var failed = 0;
-long recordCount = 0;
-long lapCount = 0;
-Console.WriteLine($"Found {files.Length} FIT files in {sourceDirectory}");
-
-foreach (var file in files)
-{
-    try
-    {
-        var bytes = await File.ReadAllBytesAsync(file);
-        var hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
-        if (await db.Activities.AnyAsync(x => x.SourceSha256 == hash))
-        {
-            skipped++;
-            continue;
-        }
-
-        var activity = FitActivityDecoder.Decode(file, bytes, hash);
-        db.Activities.Add(activity);
-        await db.SaveChangesAsync();
-        imported++;
-        recordCount += activity.Records.Count;
-        lapCount += activity.Laps.Count;
-    }
-    catch (Exception ex)
-    {
-        failed++;
-        Console.Error.WriteLine($"Failed {Path.GetFileName(file)}: {ex.Message}");
-    }
-}
-
-Console.WriteLine($"Finished: {imported} imported, {skipped} duplicates skipped, {failed} failed.");
-Console.WriteLine($"Stored {recordCount} record samples and {lapCount} lap summaries.");
-return failed == 0 ? 0 : 1;
-
-static string ResolveActivityDirectory(string input)
-{
-    var path = Path.GetFullPath(input);
-    var nestedActivity = Path.Combine(path, "GARMIN", "Activity");
-    if (Directory.Exists(nestedActivity)) return nestedActivity;
-
-    if (Path.GetFileName(path).Equals("GARMIN", StringComparison.OrdinalIgnoreCase))
-    {
-        var activity = Path.Combine(path, "Activity");
-        if (Directory.Exists(activity)) return activity;
-    }
-
-    return path;
-}
+var fitResult = await FitDirectoryImporter.ImportAsync(sourceDirectory!, db);
+Console.WriteLine($"Finished: {fitResult.Imported} imported, {fitResult.Skipped} duplicates skipped, {fitResult.Failed} failed.");
+Console.WriteLine($"Stored {fitResult.RecordCount} record samples and {fitResult.LapCount} lap summaries.");
+Console.WriteLine($"Scanned {fitResult.FilesScanned} files and read {fitResult.FilesHashed} file contents to verify hashes.");
+foreach (var error in fitResult.Errors) Console.Error.WriteLine(error);
+return fitResult.Failed == 0 ? 0 : 1;
 
 static string? GetOption(string[] values, string name)
 {

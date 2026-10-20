@@ -6,6 +6,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../Garmin.Data.csproj" />
+    <ProjectReference Include="../../src/Garmin.Data/Garmin.Data.csproj" />
   </ItemGroup>
 </Project>

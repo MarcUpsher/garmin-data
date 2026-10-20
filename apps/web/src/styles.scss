@@ -1,0 +1,127 @@
+/* You can add global styles to this file, and also import other style files */
+* { box-sizing: border-box; }
+html { min-width: 320px; min-height: 100%; background: #fafbf8; }
+body { min-width: 320px; min-height: 100vh; margin: 0; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: calc(16px + 2pt); -webkit-font-smoothing: antialiased; }
+button, select { font-family: inherit; }
+
+
+/* Shared top-bar controls and app-wide theme palette. */
+.sync-button { display: inline-flex; align-items: center; gap: 7px; margin-left: 10px; padding: 8px 12px; border: 1px solid #cdddcf; border-radius: 6px; color: #315f43; background: #edf4ed; font: inherit; font-size: calc(10px + 2pt); font-weight: 650; cursor: pointer; }
+.sync-button:hover:not(:disabled) { background: #e2eee3; }
+.sync-button:disabled { opacity: .62; cursor: progress; }
+.sync-button svg { width: 14px; height: 14px; }
+.sync-notice { margin: -12px 0 18px; padding: 11px 14px; border: 1px solid #dce9dd; border-radius: 7px; color: #476b50; background: #f0f6ef; font-size: calc(11px + 2pt); }
+.sync-error { border-color: #efdcd5; color: #80564b; background: #fcf3ef; }
+.theme-toggle { display: inline-flex; align-items: center; gap: 7px; margin-left: 7px; padding: 8px 10px; border: 1px solid #e2e7df; border-radius: 6px; color: #647067; background: #fff; font: inherit; font-size: calc(10px + 2pt); cursor: pointer; }
+.theme-toggle:hover { background: #f5f7f3; }
+.theme-toggle svg { width: 14px; height: 14px; }
+.theme-toggle:focus-visible, .sync-button:focus-visible { outline: 2px solid #76ad86; outline-offset: 2px; }
+app-root .app-shell.dark-theme {
+  --background: #111318;
+  --sidebar: #151922;
+  --surface: #1b2029;
+  --surface-raised: #222936;
+  --border: #303846;
+  --text-primary: #e6eaf0;
+  --text-secondary: #a0a8b5;
+  --text-muted: #788392;
+  --accent: #6ea8fe;
+  color: var(--text-primary);
+  background: var(--background);
+}
+app-root .dark-theme .sidebar { background: var(--sidebar); border-color: var(--border); }
+app-root .dark-theme .brand { color: var(--text-primary); }
+app-root .dark-theme .brand-mark { color: var(--accent); background: #223149; }
+app-root .dark-theme .brand-name span { color: var(--text-secondary); }
+app-root .dark-theme .nav-label { color: var(--text-muted); }
+app-root .dark-theme .nav-item { color: var(--text-secondary); }
+app-root .dark-theme .nav-item.active { color: #c0d8ff; background: #223149; }
+app-root .dark-theme .nav-count { color: #c0d8ff; background: #2c3b53; }
+app-root .dark-theme .nav-item.disabled { color: #828c9a; }
+app-root .dark-theme .soon { color: #8792a1; }
+app-root .dark-theme .local-card { background: var(--surface); }
+app-root .dark-theme .local-indicator { background: var(--accent); box-shadow: 0 0 0 3px #2a3b55; }
+app-root .dark-theme .local-card strong { color: #cfd8e6; }
+app-root .dark-theme .local-card small, app-root .dark-theme .sidebar-foot { color: var(--text-muted); }
+app-root .dark-theme .main-content { background: var(--background); }
+app-root .dark-theme .topbar { border-color: var(--border); background: rgba(21, 25, 34, .92); }
+app-root .dark-theme .breadcrumb { color: #8a94a4; }
+app-root .dark-theme .breadcrumb strong { color: #d5dbe5; }
+app-root .dark-theme .crumb-slash { color: #596475; }
+app-root .dark-theme .topbar-right { color: var(--text-secondary); }
+app-root .dark-theme .topbar-right .sync-dot { background: var(--accent); }
+app-root .dark-theme .theme-toggle { border-color: var(--border); color: #c2ccda; background: var(--surface-raised); }
+app-root .dark-theme .theme-toggle:hover { background: #2a3444; }
+app-root .dark-theme .sync-button { border-color: #3a5378; color: #c4d7fb; background: #243651; }
+app-root .dark-theme .sync-button:hover:not(:disabled) { background: #2d4565; }
+app-root .dark-theme .theme-toggle:focus-visible, app-root .dark-theme .sync-button:focus-visible { outline-color: var(--accent); }
+app-root .dark-theme .eyebrow { color: #91a8cb; }
+app-root .dark-theme h1 { color: var(--text-primary); }
+app-root .dark-theme .subtitle { color: var(--text-secondary); }
+app-root .dark-theme .heading-count { color: var(--text-secondary); }
+app-root .dark-theme .count-number { color: #c2d6f8; }
+app-root .dark-theme .activity-panel { border-color: var(--border); background: var(--surface); box-shadow: 0 5px 20px rgba(0, 0, 0, .15); }
+app-root .dark-theme .panel-toolbar { border-color: var(--border); }
+app-root .dark-theme h2 { color: #d6dce6; }
+app-root .dark-theme .result-range { color: #8993a2; }
+app-root .dark-theme .filter-control { border-color: #384252; color: #aeb8c7; background: var(--surface-raised); }
+app-root .dark-theme .filter-control select { color: #d4dbe5; }
+app-root .dark-theme .filter-control option { color: #e6eaf0; background: var(--surface-raised); }
+app-root .dark-theme .select-chevron path { stroke: #a0a8b5; }
+app-root .dark-theme thead { background: var(--surface-raised); }
+app-root .dark-theme th { color: #929cac; }
+app-root .dark-theme td { border-color: #2b3340; color: #c7ced9; }
+app-root .dark-theme tbody tr:hover { background: #202733; }
+app-root .dark-theme .activity-icon { color: #b2bdcd; background: #2a3340; }
+app-root .dark-theme .cycle-icon { color: #b4c5e3; background: #273245; }
+app-root .dark-theme .cardio-icon { color: #e0b79a; background: #382c26; }
+app-root .dark-theme .activity-title-link:hover { color: var(--accent); }
+app-root .dark-theme .activity-names strong { color: #e0e5ed; }
+app-root .dark-theme .activity-names small, app-root .dark-theme .date-cell small { color: #929cab; }
+app-root .dark-theme .date-cell, app-root .dark-theme .numeric-cell { color: #cbd2dd; }
+app-root .dark-theme .numeric-cell small { color: #a0a8b5; }
+app-root .dark-theme .muted-value { color: #7d8795; }
+app-root .dark-theme .source-badge { color: #b2bdcd; background: #2a313d; }
+app-root .dark-theme .source-badge.fit-source { color: #c3d8fb; background: #293c59; }
+app-root .dark-theme .table-footer { border-color: var(--border); color: #a0a8b5; }
+app-root .dark-theme .table-footer strong { color: #d5dbe5; }
+app-root .dark-theme .pagination button { border-color: #384252; color: #c9d2e0; background: var(--surface-raised); }
+app-root .dark-theme .pagination button:hover:not(:disabled) { background: #2a3444; }
+app-root .dark-theme .privacy-note { color: var(--text-muted); }
+app-root .dark-theme .sync-notice { border-color: #3a5378; color: #c4d7fb; background: #1e2d43; }
+app-root .dark-theme .sync-error { border-color: #69463e; color: #e3b8aa; background: #302321; }
+app-root .dark-theme .loading-state, app-root .dark-theme .empty-state, app-root .dark-theme .state-message { color: #a0a8b5; }
+app-root .dark-theme .spinner { border-color: #343e4d; border-top-color: var(--accent); }
+app-root .dark-theme .empty-state strong { color: #d5dbe5; }
+app-root .dark-theme .empty-state p { color: #a0a8b5; }
+app-root .dark-theme .empty-icon { color: var(--accent); }
+app-root .dark-theme .state-icon { color: #e0aa9b; background: #432e28; }
+app-root .dark-theme .state-message strong { color: #e1c0b7; }
+app-root .dark-theme .state-message p { color: #b19b94; }
+app-root .dark-theme .retry-button { border-color: #3b4656; color: #cbd5e3; background: var(--surface-raised); }
+app-root .dark-theme .retry-button:hover { background: #2a3444; }
+app-root .dark-theme app-activity-detail .detail-panel { color: var(--text-primary); background: var(--background); }
+app-root .dark-theme app-activity-detail .detail-header { border-color: var(--border); background: rgba(21, 25, 34, .96); }
+app-root .dark-theme app-activity-detail .back-link { color: var(--text-secondary); }
+app-root .dark-theme app-activity-detail .open-page { color: #8bb7ff; }
+app-root .dark-theme app-activity-detail .close-button { border-color: var(--border); color: #cbd4e0; background: var(--surface-raised); }
+app-root .dark-theme app-activity-detail .detail-eyebrow { color: #91a8cb; }
+app-root .dark-theme app-activity-detail h1 { color: var(--text-primary); }
+app-root .dark-theme app-activity-detail .detail-date, app-root .dark-theme app-activity-detail .heading-distance span { color: var(--text-secondary); }
+app-root .dark-theme app-activity-detail .heading-distance strong { color: #c2d6f8; }
+app-root .dark-theme app-activity-detail .detail-section { border-color: var(--border); background: var(--surface); box-shadow: 0 5px 20px rgba(0, 0, 0, .15); }
+app-root .dark-theme app-activity-detail .section-heading { border-color: var(--border); }
+app-root .dark-theme app-activity-detail .section-heading h2 { color: #d6dce6; }
+app-root .dark-theme app-activity-detail .section-heading p, app-root .dark-theme app-activity-detail .section-count { color: var(--text-secondary); }
+app-root .dark-theme app-activity-detail .lap-table th { color: #929cac; background: var(--surface-raised); }
+app-root .dark-theme app-activity-detail .lap-table td { border-color: #2b3340; color: #c7ced9; }
+app-root .dark-theme app-activity-detail .lap-table tbody tr:hover { background: #202733; }
+app-root .dark-theme app-activity-detail .lap-number { color: #a0a8b5 !important; }
+app-root .dark-theme app-activity-detail .lap-time { color: #e0e5ed !important; }
+app-root .dark-theme app-activity-detail .section-empty, app-root .dark-theme app-activity-detail .detail-state, app-root .dark-theme app-activity-detail .detail-state p { color: var(--text-secondary); }
+app-root .dark-theme app-activity-detail .total-card { background: var(--surface-raised); }
+app-root .dark-theme app-activity-detail .total-card span, app-root .dark-theme app-activity-detail .chart-legend { color: var(--text-secondary); }
+app-root .dark-theme app-activity-detail .total-card strong { color: #dce3ed; }
+app-root .dark-theme app-activity-detail .chart-guides line { stroke: #343e4d; }
+app-root .dark-theme app-activity-detail .chart-guides text, app-root .dark-theme app-activity-detail .range-label, app-root .dark-theme app-activity-detail .missing-lane, app-root .dark-theme app-activity-detail .chart-axis-label { fill: var(--text-secondary); color: var(--text-secondary); }
+app-root .dark-theme app-activity-detail .lane-baseline { stroke: #3b4554; }

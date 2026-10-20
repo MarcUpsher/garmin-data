@@ -1,0 +1,77 @@
+<div class="detail-surface" [class.drawer-mode]="isDrawer">
+  <section class="detail-panel" [attr.role]="isDrawer ? 'complementary' : null" aria-labelledby="detail-title">
+    <header class="detail-header">
+      <a class="back-link" href="/" (click)="$event.preventDefault(); close()">← <span>Activities</span></a>
+      <div class="detail-actions">
+        @if (isDrawer && data(); as result) { <a class="open-page" [href]="'/activity/' + result.activity.id" target="_blank" rel="noopener">Open in new tab ↗</a> }
+        @if (isDrawer) { <button class="close-button" type="button" aria-label="Close details" (click)="close()">×</button> }
+      </div>
+    </header>
+    @if (loading()) {
+      <div class="detail-state" aria-live="polite">Loading activity…</div>
+    } @else if (missing()) {
+      <div class="detail-state"><h1 id="detail-title">Activity unavailable</h1><p>This activity could not be found.</p></div>
+    } @else if (data(); as result) {
+      <div class="detail-content">
+        <div class="activity-heading">
+          <div><p class="detail-eyebrow">{{ result.activity.activityType || 'ACTIVITY' }}</p><h1 id="detail-title">{{ label() }}</h1>
+            <p class="detail-date">{{ result.activity.startedAt ? (result.activity.startedAt | date:'EEEE, d MMMM yyyy · HH:mm') : 'Date unavailable' }}</p>
+          </div>
+          @if (result.activity.distanceMeters !== null) { <div class="heading-distance"><strong>{{ formatDistance(result.activity.distanceMeters) }}</strong><span>distance</span></div> }
+        </div>
+
+        <section class="detail-section laps-section" aria-labelledby="laps-title">
+          <div class="section-heading"><div><h2 id="laps-title">Laps</h2><p>Split-by-split performance</p></div><span class="section-count">{{ result.laps.length }} {{ result.laps.length === 1 ? 'lap' : 'laps' }}</span></div>
+          @if (result.laps.length === 0) {
+            <div class="section-empty">No lap splits were recorded for this activity.</div>
+          } @else {
+            <div class="table-scroll"><table class="lap-table"><thead><tr><th scope="col">LAP</th><th scope="col">DISTANCE</th><th scope="col">TIME</th><th scope="col">AVG PACE</th><th scope="col">BEST PACE</th><th scope="col">AVG HR</th><th scope="col">MAX HR</th></tr></thead>
+              <tbody>@for (lap of result.laps; track lap.lapNumber) {
+                <tr><td class="lap-number">{{ lap.lapNumber }}</td><td>{{ formatDistance(lap.distanceMeters) }}</td><td class="lap-time">{{ formatDuration(lap.elapsedTimeSeconds ?? lap.timerTimeSeconds) }}</td>
+                  <td>{{ formatPace(lapPace(lap.averageSpeedMetersPerSecond, lap.distanceMeters, lap.timerTimeSeconds ?? lap.elapsedTimeSeconds)) }}</td>
+                  <td>{{ formatPace(lapPace(lap.maximumSpeedMetersPerSecond, null, null)) }}</td>
+                  <td>{{ heartRate(lap.averageHeartRateBpm) }}</td><td>{{ heartRate(lap.maximumHeartRateBpm) }}</td></tr>
+              }</tbody>
+            </table></div>
+          }
+        </section>
+
+        <section class="detail-section totals-section" aria-labelledby="totals-title">
+          <div class="section-heading"><div><h2 id="totals-title">Totals</h2><p>Overall activity summary</p></div></div>
+          <div class="totals-grid">
+            <div class="total-card"><span>Distance</span><strong>{{ formatDistance(result.activity.distanceMeters) }}</strong></div>
+            <div class="total-card"><span>Time</span><strong>{{ formatDuration(result.activity.elapsedTimeSeconds) }}</strong></div>
+            <div class="total-card"><span>Avg pace</span><strong>{{ formatPace(result.activity.averagePaceSecondsPerKilometer ?? lapPace(result.activity.averageSpeedMetersPerSecond, result.activity.distanceMeters, result.activity.elapsedTimeSeconds)) }}</strong></div>
+            <div class="total-card"><span>Best pace</span><strong>{{ formatPace(result.activity.bestPaceSecondsPerKilometer ?? lapPace(result.activity.maximumSpeedMetersPerSecond, null, null)) }}</strong></div>
+            <div class="total-card"><span>Avg heart rate</span><strong>{{ heartRate(result.activity.averageHeartRateBpm) }}</strong></div>
+            <div class="total-card"><span>Max heart rate</span><strong>{{ heartRate(result.activity.maximumHeartRateBpm) }}</strong></div>
+          </div>
+        </section>
+
+        <section class="detail-section charts-section" aria-labelledby="charts-title">
+          <div class="section-heading chart-heading"><div><h2 id="charts-title">Effort over time</h2><p>Aligned to the same elapsed-time axis</p></div>
+            <div class="chart-legend" aria-label="Chart legend"><span><i class="hr-swatch"></i>Heart rate (bpm)</span><span><i class="pace-swatch"></i>Pace (min/km)</span><span><i class="elevation-swatch"></i>Elevation (m)</span></div>
+          </div>
+          @if (!chart().hasSamples) {
+            <div class="section-empty">No heart rate, pace, or elevation samples are available for this activity.</div>
+          } @else {
+            <div class="chart-scroll"><svg class="activity-chart" viewBox="0 0 1000 348" preserveAspectRatio="none" role="img" aria-label="Heart rate, pace and elevation over a shared elapsed-time axis">
+              <g class="chart-guides">@for (tick of chart().ticks; track $index) {
+                <line [attr.x1]="tick.x" [attr.x2]="tick.x" y1="14" y2="294" />
+                <text [attr.x]="tick.x" y="326" [attr.text-anchor]="$index === 0 ? 'start' : $index === 4 ? 'end' : 'middle'">{{ tick.label }}</text>
+              }</g>
+              @for (lane of chart().lanes; track lane.key) {
+                <line class="lane-baseline" x1="88" x2="978" [attr.y1]="lane.bottom" [attr.y2]="lane.bottom" />
+                <text class="range-label" x="4" [attr.y]="lane.top + 4">{{ lane.key === 'pace' ? lane.minimum : lane.maximum }}</text>
+                <text class="range-label" x="4" [attr.y]="lane.bottom">{{ lane.key === 'pace' ? lane.maximum : lane.minimum }}</text>
+                @if (lane.available) { <polyline class="chart-line" [attr.points]="lane.points" [attr.stroke]="lane.color" /> }
+                @else { <text class="missing-lane" x="535" [attr.y]="(lane.top + lane.bottom) / 2">No {{ lane.label.toLowerCase() }} samples</text> }
+              }
+            </svg></div>
+            <p class="chart-axis-label">Elapsed time</p>
+          }
+        </section>
+      </div>
+    }
+  </section>
+</div>

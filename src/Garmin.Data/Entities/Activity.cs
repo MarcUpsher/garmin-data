@@ -4,6 +4,8 @@ namespace Garmin.Data.Entities;
 public sealed class Activity
 {
     public long Id { get; set; }
+    /// <summary>Garmin Connect activity ID when available, used to reconcile export summary rows.</summary>
+    public string? ExternalActivityId { get; set; }
 
     /// <summary>Import source format, such as FIT or GarminConnectCsv.</summary>
     public required string SourceKind { get; set; }
@@ -50,5 +52,7 @@ public sealed class Activity
     public ICollection<ActivityLap> Laps { get; set; } = new List<ActivityLap>();
     public ICollection<ActivityRecord> Records { get; set; } = new List<ActivityRecord>();
     public ICollection<ActivityExtraField> ExtraFields { get; set; } = new List<ActivityExtraField>();
+    public ICollection<ImportedDeviceFile> ImportedDeviceFiles { get; set; } = new List<ImportedDeviceFile>();
     public ActivitySourceFile? SourceFile { get; set; }
+    public ICollection<ActivitySourceEvidence> SourceEvidence { get; set; } = new List<ActivitySourceEvidence>();
 }

@@ -1,6 +1,8 @@
 # .NET build output
 **/bin/
 **/obj/
+**/node_modules/
+**/.angular/
 .vs/
 
 # Local databases and Garmin activity exports contain personal health data

@@ -8,8 +8,13 @@ public sealed class GarminDbContextFactory : IDesignTimeDbContextFactory<GarminD
 {
     public GarminDbContext CreateDbContext(string[] args)
     {
+        var defaultDataDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "garmin-data");
+        var databasePath = Path.GetFullPath(Environment.GetEnvironmentVariable("GARMIN_DB_PATH")
+            ?? Path.Combine(defaultDataDirectory, "activities.db"));
+
         var options = new DbContextOptionsBuilder<GarminDbContext>()
-            .UseSqlite("Data Source=garmin.db")
+            .UseSqlite($"Data Source={databasePath}")
             .Options;
 
         return new GarminDbContext(options);

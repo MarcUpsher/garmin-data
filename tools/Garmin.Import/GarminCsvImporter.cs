@@ -6,7 +6,9 @@ using Garmin.Data;
 using Garmin.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-internal static class GarminCsvImporter
+namespace Garmin.Importing;
+
+public static class GarminCsvImporter
 {
     private static readonly string[] RequiredColumns =
     [
