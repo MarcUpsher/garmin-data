@@ -1,4 +1,5 @@
 using Garmin.Data;
+using Garmin.Data.Entities;
 using Garmin.Data.Importing;
 using Microsoft.EntityFrameworkCore;
 
@@ -474,6 +475,81 @@ app.MapPost("/api/trends/performance/rebuild", async (
     finally { syncLock.Release(); }
 });
 
+app.MapPost("/api/wellness/import", async (
+    WellnessImportRequest request, GarminDbContext db, CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(request.DirectoryPath)) return Results.BadRequest("Enter the DI_CONNECT directory from your Garmin export.");
+    if (!await syncLock.WaitAsync(0, cancellationToken)) return Results.Conflict(new { message = "Another import or sync is already running." });
+    try
+    {
+        var result = await GarminWellnessExportImporter.ImportAsync(request.DirectoryPath, db, cancellationToken);
+        return Results.Ok(result);
+    }
+    catch (DirectoryNotFoundException) { return Results.BadRequest("That directory was not found. Select the DI_CONNECT folder containing the Garmin export subfolders."); }
+    finally { syncLock.Release(); }
+});
+
+app.MapGet("/api/wellness/status", async (GarminDbContext db, CancellationToken cancellationToken) =>
+{
+    var sleepCount = await db.SleepRecords.CountAsync(cancellationToken);
+    var wellnessCount = await db.DailyWellnessRecords.CountAsync(cancellationToken);
+    var vo2Count = await db.Vo2MaxRecords.CountAsync(cancellationToken);
+    return Results.Ok(new
+    {
+        sleepRecords = sleepCount,
+        sleepFirstDate = sleepCount == 0 ? (DateOnly?)null : await db.SleepRecords.MinAsync(x => x.CalendarDate, cancellationToken),
+        sleepLastDate = sleepCount == 0 ? (DateOnly?)null : await db.SleepRecords.MaxAsync(x => x.CalendarDate, cancellationToken),
+        dailyWellnessRecords = wellnessCount,
+        wellnessFirstDate = wellnessCount == 0 ? (DateOnly?)null : await db.DailyWellnessRecords.MinAsync(x => x.CalendarDate, cancellationToken),
+        wellnessLastDate = wellnessCount == 0 ? (DateOnly?)null : await db.DailyWellnessRecords.MaxAsync(x => x.CalendarDate, cancellationToken),
+        vo2MaxRecords = vo2Count,
+        vo2FirstDate = vo2Count == 0 ? (DateOnly?)null : await db.Vo2MaxRecords.MinAsync(x => x.CalendarDate, cancellationToken),
+        vo2LastDate = vo2Count == 0 ? (DateOnly?)null : await db.Vo2MaxRecords.MaxAsync(x => x.CalendarDate, cancellationToken)
+    });
+});
+
+app.MapGet("/api/trends/sleep", async (string? period, GarminDbContext db, CancellationToken cancellationToken) =>
+{
+    var records = await ApplyPeriod(db.SleepRecords.AsNoTracking(), period)
+        .OrderBy(x => x.CalendarDate).ToListAsync(cancellationToken);
+    var points = records.GroupBy(x => new { x.CalendarDate.Year, x.CalendarDate.Month })
+        .OrderBy(x => x.Key.Year).ThenBy(x => x.Key.Month).Select(group =>
+        {
+            var sleep = group.Where(x => x.DeepSeconds.HasValue || x.LightSeconds.HasValue || x.RemSeconds.HasValue)
+                .Select(x => (double)((x.DeepSeconds ?? 0) + (x.LightSeconds ?? 0) + (x.RemSeconds ?? 0))).ToArray();
+            return new SleepTrendPoint($"{group.Key.Year:D4}-{group.Key.Month:D2}-01", sleep.Length == 0 ? null : sleep.Average() / 3600,
+                sleep.Length, AverageInt(group.Select(x => x.DeepSeconds)), AverageInt(group.Select(x => x.LightSeconds)),
+                AverageInt(group.Select(x => x.RemSeconds)), AverageDouble(group.Select(x => x.AverageRespiration)));
+        }).ToArray();
+    return Results.Ok(new { points, recordCount = records.Count });
+});
+
+app.MapGet("/api/trends/vo2-max", async (string? period, string? sport, GarminDbContext db, CancellationToken cancellationToken) =>
+{
+    var query = ApplyPeriod(db.Vo2MaxRecords.AsNoTracking(), period);
+    if (!string.IsNullOrWhiteSpace(sport)) query = query.Where(x => x.Sport == sport);
+    var rows = await query.OrderBy(x => x.CalendarDate).ThenBy(x => x.Sport).ToListAsync(cancellationToken);
+    var points = rows.Select(x => new Vo2TrendPoint(
+        x.Id, x.CalendarDate.ToString("yyyy-MM-dd"), x.Vo2MaxValue, x.Sport, x.SubSport, x.DeviceId, x.MaxMet, x.IsCalibrated)).ToArray();
+    return Results.Ok(new { points, recordCount = points.Length });
+});
+
+static IQueryable<T> ApplyPeriod<T>(IQueryable<T> query, string? period) where T : class
+{
+    var start = period switch
+    {
+        "6m" => DateOnly.FromDateTime(DateTime.Today.AddMonths(-6)),
+        "1y" => DateOnly.FromDateTime(DateTime.Today.AddYears(-1)),
+        _ => (DateOnly?)null
+    };
+    if (start is null) return query;
+    if (typeof(T) == typeof(SleepRecord)) return (IQueryable<T>)(object)((IQueryable<SleepRecord>)query).Where(x => x.CalendarDate >= start.Value);
+    return (IQueryable<T>)(object)((IQueryable<Vo2MaxRecord>)query).Where(x => x.CalendarDate >= start.Value);
+}
+
+static double? AverageInt(IEnumerable<int?> values) { var items = values.Where(x => x.HasValue).Select(x => (double)x!.Value).ToArray(); return items.Length == 0 ? null : items.Average(); }
+static double? AverageDouble(IEnumerable<double?> values) { var items = values.Where(x => x.HasValue).Select(x => x!.Value).ToArray(); return items.Length == 0 ? null : items.Average(); }
+
 app.MapPut("/api/activities/{id:long}/hidden", async (
     long id,
     ActivityVisibilityRequest request,
@@ -657,6 +733,9 @@ internal sealed record ActivityListItem(
     bool HasRecordSamples);
 
 internal sealed record ActivityVisibilityRequest(bool IsHidden);
+internal sealed record WellnessImportRequest(string DirectoryPath);
+internal sealed record SleepTrendPoint(string Month, double? AverageSleepHours, int NightCount, double? AverageDeepSeconds, double? AverageLightSeconds, double? AverageRemSeconds, double? AverageRespiration);
+internal sealed record Vo2TrendPoint(long Id, string Date, double? Value, string? Sport, string? SubSport, string? DeviceId, double? MaxMet, bool? IsCalibrated);
 
 internal sealed record ActivityPage(
     IReadOnlyList<ActivityListItem> Items,

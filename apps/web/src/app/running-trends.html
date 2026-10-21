@@ -6,12 +6,14 @@
 
   <main class="trends-content">
     <div class="page-heading">
-      <div><p class="eyebrow">YOUR TRAINING HISTORY</p><h1>Running Trends</h1><p class="subtitle">See when you ran, stopped, and found your rhythm again.</p></div>
+      <div><p class="eyebrow">YOUR HISTORY</p><h1>Trends</h1><p class="subtitle">Explore your training, sleep and fitness history.</p></div>
     </div>
 
-    <div class="view-tabs" role="tablist" aria-label="Running trends view">
+    <div class="view-tabs" role="tablist" aria-label="Trends view">
       <button type="button" role="tab" [attr.aria-selected]="activeView() === 'consistency'" [class.selected]="activeView() === 'consistency'" (click)="selectView('consistency')">Consistency</button>
       <button type="button" role="tab" [attr.aria-selected]="activeView() === 'performance'" [class.selected]="activeView() === 'performance'" (click)="selectView('performance')">Performance</button>
+      <button type="button" role="tab" [attr.aria-selected]="activeView() === 'sleep'" [class.selected]="activeView() === 'sleep'" (click)="selectView('sleep')">Sleep</button>
+      <button type="button" role="tab" [attr.aria-selected]="activeView() === 'vo2'" [class.selected]="activeView() === 'vo2'" (click)="selectView('vo2')">VO₂ Max</button>
     </div>
 
     @if (activeView() === 'consistency') {
@@ -84,7 +86,7 @@
         }
       }
     </section>
-    } @else {
+    } @else if (activeView() === 'performance') {
       <section class="trend-section" aria-labelledby="performance-title">
         <div class="section-intro"><div><p class="section-kicker">PERFORMANCE</p><h2 id="performance-title">How fast have you run?</h2><p>Best supported effort per activity. Rolling segments require at least five FIT samples; distance plateaus, gaps over ten seconds and implausible distance jumps split a segment. This accommodates the Forerunner's variable record cadence. The end is interpolated to the exact distance. Without usable samples, a recorded activity time is included only if its full distance is within 0.1% of the target; its recorded time is left unchanged. Terrain is not corrected, so treat these as observed efforts, not standardized race results.</p></div></div>
 
@@ -146,6 +148,52 @@
                 <span>{{ point.isPersonalBest ? '★ New best' : (point.effortKind === 'RollingSegment' ? 'Rolling effort' : 'Recorded result') }}</span>
               </a>
             }</div>
+          }
+        }
+      </section>
+    } @else if (activeView() === 'sleep') {
+      <section class="trend-section" aria-labelledby="sleep-title">
+        <div class="section-intro"><div><p class="section-kicker">SLEEP</p><h2 id="sleep-title">How has your sleep changed?</h2><p>Monthly average sleep duration from Garmin sleep stages. Missing months stay empty; each point reports the number of nights behind the average.</p></div></div>
+        <div class="trend-controls"><div class="control-group" role="group" aria-label="Date range">
+          <button type="button" [class.selected]="period() === '6m'" (click)="selectPeriod('6m')">6 months</button><button type="button" [class.selected]="period() === '1y'" (click)="selectPeriod('1y')">1 year</button><button type="button" [class.selected]="period() === 'all'" (click)="selectPeriod('all')">All time</button>
+        </div></div>
+        @if (metricError()) { <div class="trend-state error" role="alert">{{ metricError() }} <button type="button" (click)="loadSleep()">Retry</button></div> }
+        @else if (metricLoading()) { <div class="trend-state">Loading sleep history…</div> }
+        @else if (sleep(); as result) {
+          @if (!result.points.length) { <div class="trend-state no-efforts">Import a Garmin Connect export to see your sleep history.</div> }
+          @else {
+            <div class="chart-card"><div class="chart-summary"><div><span class="chart-summary-label">MONTHLY AVERAGE</span><strong>{{ result.recordCount }} nights in this range</strong></div><span class="chart-instruction">Hover a bar for sleep stages and sample count</span></div>
+              <div class="chart-scroll"><svg class="performance-chart metric-chart" viewBox="0 0 1000 350" preserveAspectRatio="none" role="img" aria-label="Average sleep duration by month">
+                <g class="grid-lines">@for (tick of sleepChart().ticks; track $index) { <line x1="82" x2="990" [attr.y1]="tick.y" [attr.y2]="tick.y"/><text x="72" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }} h</text> }</g>
+                <text class="axis-title" x="16" y="20">hours</text>
+                @for (tick of sleepChart().dateTicks; track $index) { <text class="period-label" [attr.x]="tick.x" y="315" text-anchor="middle">{{ tick.label }}</text> }
+                @for (point of sleepChart().points; track point.x) { <g><title>{{ point.label }} · {{ point.value | number:'1.1-1' }} hours · {{ point.detail }}</title><rect class="distance-bar metric-bar" [attr.x]="point.x - 12" [attr.y]="point.y" width="24" [attr.height]="288 - point.y" rx="3" /></g> }
+              </svg></div><div class="chart-footer"><span>Month</span><span>Asleep duration sums deep, light and REM stages; awake time is excluded.</span></div>
+            </div>
+            <div class="wellness-observations">@for (point of result.points; track point.month) { <div><strong>{{ point.month | date:'MMM yyyy' }}</strong><span>{{ point.averageSleepHours === null ? '—' : (point.averageSleepHours | number:'1.1-1') + ' h average' }}</span><small>{{ point.nightCount }} nights · deep {{ point.averageDeepSeconds === null ? '—' : (point.averageDeepSeconds / 60 | number:'1.0-0') + ' min' }} · REM {{ point.averageRemSeconds === null ? '—' : (point.averageRemSeconds / 60 | number:'1.0-0') + ' min' }} · respiration {{ point.averageRespiration === null ? '—' : (point.averageRespiration | number:'1.1-1') }}</small></div> }</div>
+          }
+        }
+      </section>
+    } @else {
+      <section class="trend-section" aria-labelledby="vo2-title">
+        <div class="section-intro"><div><p class="section-kicker">AEROBIC FITNESS</p><h2 id="vo2-title">Recorded VO₂ Max</h2><p>Garmin-recorded values by date and sport. This is a device estimate, not a direct measurement. Points are shown individually and are not connected across time.</p></div></div>
+        <div class="trend-controls"><div class="control-group" role="group" aria-label="Date range">
+          <button type="button" [class.selected]="period() === '6m'" (click)="selectPeriod('6m')">6 months</button><button type="button" [class.selected]="period() === '1y'" (click)="selectPeriod('1y')">1 year</button><button type="button" [class.selected]="period() === 'all'" (click)="selectPeriod('all')">All time</button>
+        </div></div>
+        @if (metricError()) { <div class="trend-state error" role="alert">{{ metricError() }} <button type="button" (click)="loadVo2()">Retry</button></div> }
+        @else if (metricLoading()) { <div class="trend-state">Loading VO₂ Max history…</div> }
+        @else if (vo2(); as result) {
+          @if (!result.points.length) { <div class="trend-state no-efforts">Import a Garmin Connect export to see VO₂ Max history.</div> }
+          @else {
+            <div class="chart-card"><div class="chart-summary"><div><span class="chart-summary-label">GARMIN ESTIMATES</span><strong>{{ result.points.length }} records</strong></div><span class="chart-instruction">Hover a point for date, sport and calibration details</span></div>
+              <div class="chart-scroll"><svg class="performance-chart metric-chart" viewBox="0 0 1000 350" preserveAspectRatio="none" role="img" aria-label="VO₂ Max observations over time">
+                <g class="grid-lines">@for (tick of vo2Chart().ticks; track $index) { <line x1="82" x2="990" [attr.y1]="tick.y" [attr.y2]="tick.y"/><text x="72" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }}</text> }</g>
+                <text class="axis-title" x="16" y="20">mL/kg/min</text>
+                @for (tick of vo2Chart().dateTicks; track $index) { <text class="period-label" [attr.x]="tick.x" y="315" text-anchor="middle">{{ tick.label }}</text> }
+                @for (point of vo2Chart().points; track point.label + point.x + point.value) { <g><title>{{ point.label }} · {{ point.value | number:'1.0-1' }} · {{ point.detail }}</title><circle class="effort-point" [attr.cx]="point.x" [attr.cy]="point.y" r="5" /></g> }
+              </svg></div><div class="chart-footer"><span>Date</span><span>Same-day points are offset slightly for visibility; VO₂ values stay unchanged. Identical same-device entries are grouped.</span></div>
+            </div>
+            <div class="wellness-observations">@for (point of result.points; track point.id) { <div><strong>{{ point.date | date:'EEE, d MMM yyyy' }}</strong><span>{{ point.value === null ? 'No VO₂ Max value' : (point.value | number:'1.0-1') + ' mL/kg/min' }}</span><small>{{ point.sport || 'Sport unspecified' }}{{ point.subSport ? ' · ' + point.subSport : '' }}{{ point.isCalibrated === false ? ' · uncalibrated' : '' }}</small></div> }</div>
           }
         }
       </section>

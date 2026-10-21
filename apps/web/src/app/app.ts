@@ -28,14 +28,19 @@ export class App implements OnInit {
   protected readonly updatingActivityId = signal<number | null>(null);
   protected readonly darkTheme = signal(this.loadThemePreference());
   protected readonly isTrends = signal(false);
+  protected readonly isData = signal(false);
   protected readonly pageNumber = signal(1);
   protected readonly pageSize = 25;
   protected readonly Math = Math;
 
   ngOnInit(): void {
     this.isTrends.set(this.router.url === '/trends');
+    this.isData.set(this.router.url === '/data');
     this.router.events.subscribe(event => {
-      if (event instanceof NavigationEnd) this.isTrends.set(event.urlAfterRedirects === '/trends');
+      if (event instanceof NavigationEnd) {
+        this.isTrends.set(event.urlAfterRedirects === '/trends');
+        this.isData.set(event.urlAfterRedirects === '/data');
+      }
     });
     this.load();
   }

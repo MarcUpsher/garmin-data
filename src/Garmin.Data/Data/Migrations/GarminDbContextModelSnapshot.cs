@@ -400,6 +400,83 @@ namespace Garmin.Data.Data.Migrations
                     b.ToTable("ActivitySourceFiles");
                 });
 
+            modelBuilder.Entity("Garmin.Data.Entities.DailyWellnessRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ActiveKilocalories")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AllDayStress")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BodyBattery")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("CalendarDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CurrentDayRestingHeartRateBpm")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DailyStepGoal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("FloorsAscended")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("FloorsDescended")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("HydrationMillilitres")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("ModerateIntensityMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("Respiration")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("RestingHeartRateBpm")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Source")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceRecordHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("TotalDistanceMeters")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("TotalKilocalories")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("TotalSteps")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("VigorousIntensityMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CalendarDate");
+
+                    b.HasIndex("SourceRecordHash")
+                        .IsUnique();
+
+                    b.ToTable("DailyWellnessRecords");
+                });
+
             modelBuilder.Entity("Garmin.Data.Entities.ImportedDeviceFile", b =>
                 {
                     b.Property<long>("Id")
@@ -436,6 +513,124 @@ namespace Garmin.Data.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("ImportedDeviceFiles");
+                });
+
+            modelBuilder.Entity("Garmin.Data.Entities.SleepRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("AverageRespiration")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("AwakeSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("CalendarDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DeepSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("HighestRespiration")
+                        .HasColumnType("REAL");
+
+                    b.Property<bool?>("IsRetroactive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("LightSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("LowestRespiration")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("RemSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SleepEndUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SleepStartUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceRecordHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UnmeasurableSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("WindowConfirmationType")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CalendarDate");
+
+                    b.HasIndex("SourceRecordHash")
+                        .IsUnique();
+
+                    b.ToTable("SleepRecords");
+                });
+
+            modelBuilder.Entity("Garmin.Data.Entities.Vo2MaxRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("CalendarDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("IsCalibrated")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("MaxMet")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("MaxMetCategory")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceRecordHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sport")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SubSport")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("Vo2MaxValue")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceRecordHash")
+                        .IsUnique();
+
+                    b.HasIndex("CalendarDate", "Sport");
+
+                    b.ToTable("Vo2MaxRecords");
                 });
 
             modelBuilder.Entity("Garmin.Data.Entities.ActivityExtraField", b =>

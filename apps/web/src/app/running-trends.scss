@@ -17,6 +17,7 @@
 .trends-content { width: min(1320px, calc(100% - 80px)); margin: 42px auto 60px; }
 .page-heading { margin-bottom: 30px; }
 .view-tabs { display: flex; gap: 8px; margin: -12px 0 30px; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+.view-tabs { flex-wrap: wrap; }
 .view-tabs button { padding: 12px 16px; border: 0; border-bottom: 2px solid transparent; color: var(--mat-sys-on-surface-variant); background: transparent; font: inherit; font-size: .84rem; cursor: pointer; }
 .view-tabs button.selected { border-color: var(--mat-sys-primary); color: var(--mat-sys-primary); font-weight: 600; }
 .eyebrow,
@@ -53,6 +54,21 @@ h1 { margin: 0; color: var(--mat-sys-on-surface); font-size: 1.9rem; font-weight
 .chart-scroll { overflow-x: auto; padding: 16px 16px 0; }
 .consistency-chart { width: 100%; min-width: 690px; height: auto; display: block; overflow: visible; }
 .performance-chart { width: 100%; min-width: 690px; height: auto; display: block; overflow: visible; }
+.metric-chart { min-width: 760px; }
+.metric-bar { fill: var(--mat-sys-primary); opacity: .82; }
+.wellness-import { display: grid; gap: 8px; margin: 18px 0; padding: 16px; border: 1px solid var(--mat-sys-outline-variant); border-radius: 12px; background: var(--mat-sys-surface-container-low); }
+.wellness-import label { display: grid; gap: 4px; font-weight: 600; }
+.wellness-import small { color: var(--mat-sys-on-surface-variant); font-weight: 400; }
+.wellness-import > div { display: flex; gap: 8px; }
+.wellness-import input { min-width: 0; flex: 1; padding: 10px 12px; border: 1px solid var(--mat-sys-outline-variant); border-radius: 8px; color: var(--mat-sys-on-surface); background: var(--mat-sys-surface); font: inherit; }
+.wellness-import button { padding: 9px 16px; border: 0; border-radius: 8px; color: var(--mat-sys-on-primary); background: var(--mat-sys-primary); font: inherit; cursor: pointer; }
+.wellness-import button:disabled { opacity: .6; cursor: wait; }
+.wellness-import p { margin: 0; color: var(--mat-sys-on-surface-variant); }
+.wellness-observations { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 18px; }
+.wellness-observations > div { display: grid; gap: 5px; padding: 14px; border: 1px solid var(--mat-sys-outline-variant); border-radius: 10px; background: var(--mat-sys-surface-container-low); }
+.wellness-observations strong { color: var(--mat-sys-on-surface); }
+.wellness-observations span { color: var(--mat-sys-primary); font-weight: 600; }
+.wellness-observations small { color: var(--mat-sys-on-surface-variant); }
 .performance-chart a { cursor: pointer; }
 .date-tick { stroke: var(--mat-sys-outline); stroke-width: 1; }
 .effort-hit { fill: transparent; }

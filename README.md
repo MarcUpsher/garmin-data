@@ -16,10 +16,13 @@ name is still open.
 - Calculates cached best rolling 1, 2, 5, 6 and 10 km running efforts from FIT samples, with links
   back to the activity. These are observed training efforts, not assumed race results or
   standardized course performances.
+- Imports dated sleep, daily wellness and VO₂ Max records from a Garmin Connect export and charts
+  sleep and VO₂ Max history in Trends.
 
 The direct Garmin Bluetooth transport is still research work and is not part of the application
-sync flow. USB sync currently reads FIT files after Linux mounts the watch as storage. Other Garmin
-export families such as sleep, daily wellness and historical VO₂ max are not imported yet.
+sync flow. USB sync currently reads FIT files after Linux mounts the watch as storage. Use **Data &
+Imports** in the application for historical sleep, daily wellness and VO₂ Max records. The wider
+Garmin export also contains other datasets that are not imported yet.
 
 ## Project layout
 
@@ -81,6 +84,14 @@ make the watch files available first.
 Open **Trends → Performance** and click **Update efforts** to calculate or rebuild cached running
 efforts for existing activities. New FIT files receive calculated efforts during import. The
 algorithm version is stored with the results so they can be rebuilt when the calculation changes.
+
+### Restore data from a Garmin Connect export
+
+Open **Data & Imports** to idempotently import sleep, daily wellness and VO₂ Max history. For a
+full activity rebuild, catalog the archive FIT files and create a new database first. The activity
+importer expects an empty activity table; review its output before switching `GARMIN_DB_PATH` to
+the rebuilt database. Then run the wellness import against that database as well. The full-export
+workflow and options are documented in the command examples below.
 
 ## Import data from the command line
 

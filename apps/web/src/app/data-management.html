@@ -1,0 +1,28 @@
+<div class="data-page">
+  <header class="data-topbar"><div class="breadcrumbs"><span>Library</span><span>/</span><strong>Data &amp; Imports</strong></div><span class="local-status"><i></i>Local database</span></header>
+  <main class="data-content">
+    <div class="page-heading"><div><p class="eyebrow">YOUR LOCAL DATA</p><h1>Data &amp; Imports</h1><p class="subtitle">Restore Garmin history and see which data sources are stored here.</p></div></div>
+
+    <section class="source-card" aria-labelledby="watch-import-title">
+      <div class="source-icon">⌚</div><div class="source-copy"><p class="section-kicker">WATCH STORAGE</p><h2 id="watch-import-title">Sync activities from your watch</h2><p>Connect the watch by USB and sync mounted FIT activity files. New files are added while unchanged files are skipped.</p><a routerLink="/">Open Activities to sync the watch <span aria-hidden="true">↗</span></a></div>
+      <div class="source-count"><strong>Activities</strong><small>FIT files and samples</small></div>
+    </section>
+
+    <section class="source-card" aria-labelledby="connect-import-title">
+      <div class="source-icon">◷</div><div class="source-copy"><p class="section-kicker">GARMIN CONNECT EXPORT</p><h2 id="connect-import-title">Import sleep and daily metrics</h2><p>Imports sleep stages, daily wellness summaries and historical VO₂ Max values from the export’s JSON files. Re-running this import skips records already stored.</p>
+        <label for="connect-export-directory">DI_CONNECT folder</label><div class="path-row"><input id="connect-export-directory" type="text" [value]="directory()" (input)="setDirectory($event)" placeholder="/path/to/DI_CONNECT"><button type="button" [disabled]="busy()" (click)="importWellness()">{{ busy() ? 'Importing…' : 'Import wellness history' }}</button></div>
+        <small class="path-hint">Select the folder containing DI-Connect-Wellness, DI-Connect-Aggregator and DI-Connect-Metrics. The path is remembered in this browser on this computer.</small>
+        @if (error()) { <p class="import-error" role="alert">{{ error() }}</p> }
+        @if (result(); as imported) { <p class="import-result" role="status">Added {{ imported.sleepAdded }} sleep records, {{ imported.dailyWellnessAdded }} daily wellness records and {{ imported.vo2MaxAdded }} VO₂ Max records. Skipped {{ imported.skipped }} duplicates and {{ imported.invalid }} invalid records.</p> }
+      </div>
+      <div class="source-count"><strong>Stored records</strong><small>{{ status()?.sleepRecords ?? '—' }} sleep nights@if (status()?.sleepFirstDate && status()?.sleepLastDate) { · {{ status()?.sleepFirstDate | date:'MMM yyyy' }}–{{ status()?.sleepLastDate | date:'MMM yyyy' }} }</small><small>{{ status()?.dailyWellnessRecords ?? '—' }} wellness days@if (status()?.wellnessFirstDate && status()?.wellnessLastDate) { · {{ status()?.wellnessFirstDate | date:'MMM yyyy' }}–{{ status()?.wellnessLastDate | date:'MMM yyyy' }} }</small><small>{{ status()?.vo2MaxRecords ?? '—' }} VO₂ Max values@if (status()?.vo2FirstDate && status()?.vo2LastDate) { · {{ status()?.vo2FirstDate | date:'MMM yyyy' }}–{{ status()?.vo2LastDate | date:'MMM yyyy' }} }</small></div>
+    </section>
+
+    <section class="source-card restore-card" aria-labelledby="full-restore-title">
+      <div class="source-icon">↺</div><div class="source-copy"><p class="section-kicker">FULL GARMIN CONNECT ARCHIVE</p><h2 id="full-restore-title">Rebuild the activity library</h2><p>The complete export can rebuild activity summaries and link their FIT files. This restore uses a separate database so you can inspect it before switching away from the current one.</p>
+        <ol><li>Catalog the FIT archive once: <code>dotnet run --project tools/Garmin.Import -- catalog-fit "/path/to/DI_CONNECT/DI-Connect-Uploaded-Files" --output "/tmp/garmin-fit-catalog.csv"</code>.</li><li>Build a new database: <code>dotnet run --project tools/Garmin.Import -- import-garmin-export "/path/to/DI_CONNECT" --catalog "/tmp/garmin-fit-catalog.csv" --database "/tmp/activities.rebuilt.db" --supplement-database "/path/to/current/activities.db"</code>.</li><li>Review the reported import counts, then point <code>GARMIN_DB_PATH</code> at the rebuilt database and import wellness history from this page.</li></ol>
+        <p class="restore-note">The rebuilt activity database does not include wellness tables’ records until the wellness import is run against that database. Keep the original database until the rebuilt one is checked.</p>
+      </div>
+    </section>
+  </main>
+</div>

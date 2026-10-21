@@ -13,6 +13,9 @@ public sealed class GarminDbContext(DbContextOptions<GarminDbContext> options) :
     public DbSet<ActivitySourceFile> ActivitySourceFiles => Set<ActivitySourceFile>();
     public DbSet<ImportedDeviceFile> ImportedDeviceFiles => Set<ImportedDeviceFile>();
     public DbSet<ActivitySourceEvidence> ActivitySourceEvidence => Set<ActivitySourceEvidence>();
+    public DbSet<SleepRecord> SleepRecords => Set<SleepRecord>();
+    public DbSet<DailyWellnessRecord> DailyWellnessRecords => Set<DailyWellnessRecord>();
+    public DbSet<Vo2MaxRecord> Vo2MaxRecords => Set<Vo2MaxRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -99,6 +102,33 @@ public sealed class GarminDbContext(DbContextOptions<GarminDbContext> options) :
             }).IsUnique();
             entity.HasOne(x => x.Activity).WithMany(x => x.ExtraFields)
                 .HasForeignKey(x => x.ActivityId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SleepRecord>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.SourceRecordHash).IsUnique();
+            entity.HasIndex(x => x.CalendarDate);
+            entity.Property(x => x.SourceRecordHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SourceFileName).HasMaxLength(255).IsRequired();
+        });
+
+        modelBuilder.Entity<DailyWellnessRecord>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.SourceRecordHash).IsUnique();
+            entity.HasIndex(x => x.CalendarDate);
+            entity.Property(x => x.SourceRecordHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SourceFileName).HasMaxLength(255).IsRequired();
+        });
+
+        modelBuilder.Entity<Vo2MaxRecord>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.SourceRecordHash).IsUnique();
+            entity.HasIndex(x => new { x.CalendarDate, x.Sport });
+            entity.Property(x => x.SourceRecordHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SourceFileName).HasMaxLength(255).IsRequired();
         });
     }
 }
