@@ -115,6 +115,8 @@ public sealed class GarminDbContext(DbContextOptions<GarminDbContext> options) :
 
         modelBuilder.Entity<DailyWellnessRecord>(entity =>
         {
+            entity.Property(x => x.FloorsAscendedMeters).HasColumnName("FloorsAscended");
+            entity.Property(x => x.FloorsDescendedMeters).HasColumnName("FloorsDescended");
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.SourceRecordHash).IsUnique();
             entity.HasIndex(x => x.CalendarDate);

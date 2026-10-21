@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ActivityDetailResponse, ActivitySample, ActivitySegmentSummary, ActivityService } from './activity.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -41,7 +42,7 @@ interface ActivityChart {
   styleUrl: './activity-detail.scss',
   templateUrl: './activity-detail.html',
 })
-export class ActivityDetail implements OnInit, OnChanges {
+export class ActivityDetail implements OnInit, OnChanges, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly service = inject(ActivityService);
@@ -61,6 +62,9 @@ export class ActivityDetail implements OnInit, OnChanges {
   protected readonly segmentLoading = signal(false);
   protected readonly chart = computed(() => this.buildChart(this.data(), this.axisMode()));
   private dragStart: number | null = null;
+  private activityRequest?: Subscription;
+  private segmentRequest?: Subscription;
+  private routeRequest?: Subscription;
 
   ngOnInit(): void {
     this.initialized = true;
@@ -68,22 +72,39 @@ export class ActivityDetail implements OnInit, OnChanges {
       this.loadActivity(this.activityId);
       return;
     }
-    this.route.paramMap.subscribe((params) => {
+    this.routeRequest = this.route.paramMap.subscribe((params) => {
       this.loadActivity(Number(params.get('id')));
     });
+  }
+
+  ngOnDestroy(): void {
+    this.activityRequest?.unsubscribe();
+    this.segmentRequest?.unsubscribe();
+    this.routeRequest?.unsubscribe();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.initialized || !changes['activityId']) return;
     if (this.activityId === null) {
-      this.data.set(null);
+      this.resetActivityState();
       this.loading.set(false);
       this.missing.set(false);
     } else this.loadActivity(this.activityId);
   }
 
-  private loadActivity(id: number): void {
+  private resetActivityState(): void {
+    this.activityRequest?.unsubscribe();
+    this.segmentRequest?.unsubscribe();
     this.data.set(null);
+    this.hovered.set(null);
+    this.selection.set(null);
+    this.segment.set(null);
+    this.segmentLoading.set(false);
+    this.dragStart = null;
+  }
+
+  private loadActivity(id: number): void {
+    this.resetActivityState();
     this.loading.set(true);
     this.missing.set(false);
     if (!Number.isSafeInteger(id) || id < 1) {
@@ -91,7 +112,7 @@ export class ActivityDetail implements OnInit, OnChanges {
       this.missing.set(true);
       return;
     }
-    this.service.get(id).subscribe({
+    this.activityRequest = this.service.get(id).subscribe({
       next: (data) => { this.data.set(data); this.loading.set(false); },
       error: () => { this.loading.set(false); this.missing.set(true); },
     });
@@ -107,6 +128,7 @@ export class ActivityDetail implements OnInit, OnChanges {
   }
   protected setAxis(mode: 'time' | 'distance'): void {
     if (mode === 'distance' && !this.chart().distanceAxisAvailable) return;
+    this.segmentRequest?.unsubscribe();
     this.axisMode.set(mode);
     this.hovered.set(null);
     this.selection.set(null);
@@ -155,6 +177,8 @@ export class ActivityDetail implements OnInit, OnChanges {
   }
   protected chartPointerDown(event: PointerEvent): void {
     if (event.button !== 0) return;
+    this.segmentRequest?.unsubscribe();
+    this.segmentLoading.set(false);
     const x = this.pointerX(event);
     this.dragStart = x;
     this.selection.set({ startX: x, endX: x });
@@ -185,13 +209,19 @@ export class ActivityDetail implements OnInit, OnChanges {
     const end = this.nearestPoint(endX);
     const id = this.data()?.activity.id;
     if (!start || !end || !id || start.recordNumber === end.recordNumber) return;
+    this.segmentRequest?.unsubscribe();
     this.segmentLoading.set(true);
-    this.service.getSegmentSummary(id, Math.min(start.recordNumber, end.recordNumber), Math.max(start.recordNumber, end.recordNumber)).subscribe({
+    this.segmentRequest = this.service.getSegmentSummary(id, Math.min(start.recordNumber, end.recordNumber), Math.max(start.recordNumber, end.recordNumber)).subscribe({
       next: (result) => { this.segment.set(result); this.segmentLoading.set(false); },
       error: () => { this.segment.set(null); this.segmentLoading.set(false); },
     });
   }
-  protected clearSelection(): void { this.selection.set(null); this.segment.set(null); }
+  protected clearSelection(): void {
+    this.segmentRequest?.unsubscribe();
+    this.selection.set(null);
+    this.segment.set(null);
+    this.segmentLoading.set(false);
+  }
   protected chartPointerLeave(): void { if (this.dragStart === null) this.hovered.set(null); }
   protected selectedLeft(): number { const value = this.selection(); return value ? Math.min(value.startX, value.endX) : 0; }
   protected selectedWidth(): number { const value = this.selection(); return value ? Math.abs(value.endX - value.startX) : 0; }
@@ -219,13 +249,13 @@ export class ActivityDetail implements OnInit, OnChanges {
     const lastDistance = validDistances.length ? Math.max(...validDistances) : 0;
     const distanceAxisAvailable = validDistances.length > 1 && lastDistance > firstDistance;
     const useDistance = axis === 'distance' && distanceAxisAvailable;
+    const fallbackSpan = Math.max(data?.activity.elapsedTimeSeconds ?? 0, 1);
     const xValues = samples.map((sample, index) => {
       if (useDistance) return sample.distanceMeters === null ? null : sample.distanceMeters - firstDistance;
       const time = timestamps[index];
       return time !== null && firstTime !== null ? (time - firstTime) / 1000
         : samples.length > 1 ? index / (samples.length - 1) * fallbackSpan : 0;
     });
-    const fallbackSpan = Math.max(data?.activity.elapsedTimeSeconds ?? 0, 1);
     const lastX = xValues.filter((value): value is number => value !== null).reduce((max, value) => Math.max(max, value), 0) || fallbackSpan;
     const plotLeft = 92, plotRight = 908, plotTop = 32, plotBottom = 286;
     const points = samples.flatMap((sample, index): ChartPoint[] => {

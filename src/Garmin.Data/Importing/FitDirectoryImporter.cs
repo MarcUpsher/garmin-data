@@ -66,16 +66,27 @@ public static class FitDirectoryImporter
 
                 if (activityIdsByHash is null)
                 {
-                    activityIdsByHash = await db.Activities.AsNoTracking()
-                        .Select(x => new { x.SourceSha256, x.Id })
-                        .ToDictionaryAsync(x => x.SourceSha256, x => x.Id, cancellationToken);
+                    // Connect imports use a JSON summary as the primary source.
+                    // Their FIT bytes, including supplemental files, are separate evidence.
+                    activityIdsByHash = new Dictionary<string, long>(StringComparer.Ordinal);
+                    var sources = await db.Activities.AsNoTracking()
+                        .Select(x => new { x.SourceSha256, x.FitSha256, x.Id }).ToListAsync(cancellationToken);
+                    foreach (var source in sources)
+                    {
+                        activityIdsByHash.TryAdd(source.SourceSha256, source.Id);
+                        if (source.FitSha256 is { } fitHash) activityIdsByHash.TryAdd(fitHash, source.Id);
+                    }
+                    var evidence = await db.ActivitySourceEvidence.AsNoTracking()
+                        .Select(x => new { x.SourceSha256, x.ActivityId }).ToListAsync(cancellationToken);
+                    foreach (var source in evidence) activityIdsByHash.TryAdd(source.SourceSha256, source.ActivityId);
                 }
 
                 if (activityIdsByHash.TryGetValue(hash, out var existingActivityId))
                 {
-                    skipped++;
                     UpsertFileIndex(db, indexed, indexedFiles, deviceKey, relativePath, fileSize,
                         lastModified, existingActivityId);
+                    await db.SaveChangesAsync(cancellationToken);
+                    skipped++;
                     continue;
                 }
 
@@ -96,10 +107,15 @@ public static class FitDirectoryImporter
             {
                 failed++;
                 errors.Add($"{Path.GetFileName(file)}: {ex.Message}");
+                // A failed SaveChanges leaves added entities and modified index rows
+                // tracked. Reload the index so the next file starts from persisted state.
+                db.ChangeTracker.Clear();
+                indexedFiles = await db.ImportedDeviceFiles
+                    .Where(x => x.DeviceKey == deviceKey)
+                    .ToDictionaryAsync(x => x.RelativePath, StringComparer.Ordinal, cancellationToken);
             }
         }
 
-        await db.SaveChangesAsync(cancellationToken);
         return new FitImportResult(imported, skipped, failed, records, laps, files.Length, filesHashed, errors);
     }
 

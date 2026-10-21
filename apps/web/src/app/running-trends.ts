@@ -1,5 +1,6 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { ActivityDetail } from './activity-detail';
 import { ActivityRow, ActivityService, RunningConsistencyBucket, RunningConsistencyResponse, RunningPerformancePoint, RunningPerformanceResponse, SleepTrendPoint, SleepTrendResponse, Vo2TrendPoint, Vo2TrendResponse } from './activity.service';
@@ -19,7 +20,7 @@ interface PerformanceChartPoint extends RunningPerformancePoint { x: number; y: 
 interface PerformanceTick { y: number; seconds: number; label: string; }
 interface PerformanceDateTick { x: number; label: string; }
 interface PerformanceChart { points: PerformanceChartPoint[]; ticks: PerformanceTick[]; dateTicks: PerformanceDateTick[]; }
-interface MetricChartPoint { x: number; y: number; label: string; value: number; detail: string; }
+interface MetricChartPoint { key: string; width: number; x: number; y: number; label: string; value: number; detail: string; }
 interface MetricChart { points: MetricChartPoint[]; ticks: { y: number; label: string }[]; dateTicks: { x: number; label: string }[]; }
 
 @Component({
@@ -28,7 +29,11 @@ interface MetricChart { points: MetricChartPoint[]; ticks: { y: number; label: s
   styleUrl: './running-trends.scss',
   templateUrl: './running-trends.html',
 })
-export class RunningTrends implements OnInit {
+export class RunningTrends implements OnInit, OnDestroy {
+  private consistencyRequest?: Subscription;
+  private performanceRequest?: Subscription;
+  private metricRequest?: Subscription;
+  private bucketRequest?: Subscription;
   private readonly service = inject(ActivityService);
   protected readonly period = signal<'6m' | '1y' | 'all'>('6m');
   protected readonly bucketSize = signal<'month' | 'week'>('month');
@@ -53,44 +58,51 @@ export class RunningTrends implements OnInit {
   protected readonly vo2 = signal<Vo2TrendResponse | null>(null);
   protected readonly metricLoading = signal(false);
   protected readonly metricError = signal<string | null>(null);
-  protected readonly sleepChart = computed(() => this.buildMetricChart(this.sleep()?.points ?? [], 'averageSleepHours', 'month', 0));
-  protected readonly vo2Chart = computed(() => this.buildMetricChart(this.vo2()?.points ?? [], 'value', 'date', 20));
+  protected readonly sleepChart = computed(() => this.buildMetricChart(this.sleep()?.points ?? [], 'sleep', this.sleep()?.rangeStart, this.sleep()?.rangeEnd));
+  protected readonly vo2Chart = computed(() => this.buildMetricChart(this.vo2()?.points ?? [], 'vo2', this.vo2()?.rangeStart, this.vo2()?.rangeEnd));
 
   ngOnInit(): void { this.load(); }
+  ngOnDestroy(): void {
+    this.consistencyRequest?.unsubscribe(); this.performanceRequest?.unsubscribe();
+    this.metricRequest?.unsubscribe(); this.bucketRequest?.unsubscribe();
+  }
 
   protected load(): void {
     if (this.activeView() === 'performance') { this.loadPerformance(); return; }
     if (this.activeView() === 'sleep') { this.loadSleep(); return; }
     if (this.activeView() === 'vo2') { this.loadVo2(); return; }
+    this.consistencyRequest?.unsubscribe(); this.bucketRequest?.unsubscribe();
     this.loading.set(true);
     this.error.set(null);
     this.selectedBucket.set(null);
     this.activities.set([]);
-    this.service.getRunningConsistency(this.period(), this.bucketSize()).subscribe({
+    this.consistencyRequest = this.service.getRunningConsistency(this.period(), this.bucketSize()).subscribe({
       next: value => { this.response.set(value); this.loading.set(false); },
       error: () => { this.error.set('Could not load running trends. Check that the local activity service is running.'); this.loading.set(false); },
     });
   }
 
   protected selectView(view: 'consistency' | 'performance' | 'sleep' | 'vo2'): void {
+    this.metricRequest?.unsubscribe();
     this.activeView.set(view);
-    if (view === 'performance') this.loadPerformance();
-    if (view === 'sleep') this.loadSleep();
-    if (view === 'vo2') this.loadVo2();
+    this.load();
   }
 
   protected loadSleep(): void {
+    this.metricRequest?.unsubscribe();
     this.metricLoading.set(true); this.metricError.set(null);
-    this.service.getSleepTrend(this.period()).subscribe({ next: value => { this.sleep.set(value); this.metricLoading.set(false); }, error: () => { this.metricError.set('Could not load sleep history.'); this.metricLoading.set(false); } });
+    this.metricRequest = this.service.getSleepTrend(this.period()).subscribe({ next: value => { this.sleep.set(value); this.metricLoading.set(false); }, error: () => { this.metricError.set('Could not load sleep history.'); this.metricLoading.set(false); } });
   }
   protected loadVo2(): void {
+    this.metricRequest?.unsubscribe();
     this.metricLoading.set(true); this.metricError.set(null);
-    this.service.getVo2Trend(this.period()).subscribe({ next: value => { this.vo2.set(value); this.metricLoading.set(false); }, error: () => { this.metricError.set('Could not load VO₂ Max history.'); this.metricLoading.set(false); } });
+    this.metricRequest = this.service.getVo2Trend(this.period()).subscribe({ next: value => { this.vo2.set(value); this.metricLoading.set(false); }, error: () => { this.metricError.set('Could not load VO₂ Max history.'); this.metricLoading.set(false); } });
   }
   protected loadPerformance(): void {
+    this.performanceRequest?.unsubscribe();
     this.performanceLoading.set(true);
     this.performanceError.set(null);
-    this.service.getRunningPerformance(this.performanceDistance(), this.period()).subscribe({
+    this.performanceRequest = this.service.getRunningPerformance(this.performanceDistance(), this.period()).subscribe({
       next: value => { this.performance.set(value); this.performanceLoading.set(false); },
       error: () => { this.performanceError.set('Could not load performance efforts. Check that the local activity service is running.'); this.performanceLoading.set(false); },
     });
@@ -123,9 +135,10 @@ export class RunningTrends implements OnInit {
     this.load();
   }
 
-  private buildMetricChart<T extends SleepTrendPoint | Vo2TrendPoint>(points: T[], valueKey: 'averageSleepHours' | 'value', dateKey: 'month' | 'date', floor: number): MetricChart {
-    let values = points.map(point => ({ dateText: 'month' in point ? point.month : point.date, date: new Date('month' in point ? point.month : point.date).getTime(), value: ('averageSleepHours' in point ? point.averageSleepHours : point.value) as number | null, point, repeated: 1 }))
-      .filter((item): item is { dateText: string; date: number; value: number; point: T; repeated: number } => Number.isFinite(item.date) && item.value !== null && Number.isFinite(item.value));
+  private buildMetricChart<T extends SleepTrendPoint | Vo2TrendPoint>(points: T[], metric: 'sleep' | 'vo2', rangeStart?: string, rangeEnd?: string): MetricChart {
+    const valueKey = metric === 'sleep' ? 'averageSleepHours' : 'value';
+    let values = points.map(point => ({ dateText: 'month' in point ? point.month : point.date, date: Date.parse(('month' in point ? point.month : point.date) + 'T00:00:00Z'), value: ('averageSleepHours' in point ? point.averageSleepHours : point.value) as number | null, point, repeated: 1 }))
+      .filter((item): item is { dateText: string; date: number; value: number; point: T; repeated: number } => Number.isFinite(item.date) && item.value !== null && item.value > 0 && Number.isFinite(item.value));
     if (valueKey === 'value') {
       const distinct = new Map<string, typeof values[number]>();
       for (const item of values) {
@@ -140,19 +153,24 @@ export class RunningTrends implements OnInit {
     if (!values.length) return { points: [], ticks: [], dateTicks: [] };
     const dates = values.map(item => item.date);
     const maxDate = Math.max(...dates), actualMin = Math.min(...dates);
-    const rangeMin = this.period() === 'all' ? actualMin : Math.min(actualMin, new Date(Date.now() - (this.period() === '6m' ? 183 : 365) * 86400000).getTime());
-    const rangeMax = Math.max(maxDate, rangeMin + 86400000);
+    const rangeMin = rangeStart ? Date.parse(rangeStart + 'T00:00:00Z') : actualMin;
+    const rangeMax = Math.max(rangeEnd ? Date.parse(rangeEnd + 'T00:00:00Z') : maxDate, rangeMin + 86400000);
     const maxValue = Math.max(...values.map(x => x.value));
-    const minValue = valueKey === 'value' ? Math.min(floor, ...values.map(x => x.value)) : 0;
+    const minValue = valueKey === 'value' ? Math.min(...values.map(x => x.value)) : 0;
     const pad = valueKey === 'value' ? Math.max(1, (maxValue - minValue) * .12) : .4;
-    const low = Math.max(valueKey === 'value' ? 0 : 0, minValue - (valueKey === 'value' ? pad : 0));
+    const low = Math.max(0, minValue - (valueKey === 'value' ? pad : 0));
     const high = Math.ceil((maxValue + pad) * (valueKey === 'value' ? 1 : 2)) / (valueKey === 'value' ? 1 : 2);
     const top = 24, bottom = 288, left = 82, right = 990;
     const chartPoints = values.map(({ date, value, point, repeated, dateText }) => {
+      const monthStart = Math.max(date, rangeMin);
+      const monthEnd = Math.min(Date.UTC(new Date(date).getUTCFullYear(), new Date(date).getUTCMonth() + 1, 1), rangeMax);
+      const position = metric === 'sleep' ? (monthStart + monthEnd) / 2 : date;
+      const width = metric === 'sleep' ? Math.min(24, (monthEnd - monthStart) / (rangeMax - rangeMin) * (right - left) * .66) : 0;
+      const minutes = (seconds: number | null) => seconds === null ? '—' : `${Math.round(seconds / 60)} min`;
       const detail = valueKey === 'value'
         ? `${(point as Vo2TrendPoint).sport ?? 'Unknown sport'} · ${(point as Vo2TrendPoint).subSport ?? 'unspecified'}${(point as Vo2TrendPoint).isCalibrated === false ? ' · uncalibrated' : ''}${repeated > 1 ? ` · grouped ${repeated} identical export records` : ''}`
-        : `${(point as SleepTrendPoint).nightCount} nights · avg sleep ${(point as SleepTrendPoint).averageSleepHours!.toFixed(1)} h · deep ${((point as SleepTrendPoint).averageDeepSeconds ?? 0) / 60 | 0} min · REM ${((point as SleepTrendPoint).averageRemSeconds ?? 0) / 60 | 0} min`;
-      return { x: left + ((date - rangeMin) / (rangeMax - rangeMin)) * (right - left), y: bottom - ((value - low) / (high - low || 1)) * (bottom - top), label: valueKey === 'value' ? new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }), dateText, value, detail };
+        : `${(point as SleepTrendPoint).nightCount} measured nights · avg sleep ${value.toFixed(1)} h · deep ${minutes((point as SleepTrendPoint).averageDeepSeconds)} · REM ${minutes((point as SleepTrendPoint).averageRemSeconds)}`;
+      return { key: 'id' in point ? `vo2-${point.id}` : `sleep-${dateText}`, width, x: left + ((position - rangeMin) / (rangeMax - rangeMin)) * (right - left), y: bottom - ((value - low) / (high - low || 1)) * (bottom - top), label: valueKey === 'value' ? new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }) : new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', timeZone: 'UTC' }), dateText, value, detail };
     });
     if (valueKey === 'value') {
       const byDate = new Map<string, typeof chartPoints>();
@@ -165,9 +183,9 @@ export class RunningTrends implements OnInit {
     const tickCount = 4;
     const dateTicks = Array.from({ length: 5 }, (_, i) => {
       const date = new Date(rangeMin + (rangeMax - rangeMin) * i / 4);
-      return { x: left + (right - left) * i / 4, label: date.toLocaleDateString(undefined, { year: '2-digit', month: 'short' }) };
+      return { x: left + (right - left) * i / 4, label: date.toLocaleDateString(undefined, { year: '2-digit', month: 'short', timeZone: 'UTC' }) };
     });
-    return { points: chartPoints, ticks: Array.from({ length: tickCount + 1 }, (_, i) => { const value = low + (high - low) * i / tickCount; return { y: bottom - i * (bottom - top) / tickCount, label: value.toFixed(valueKey === 'value' ? 0 : 1) }; }), dateTicks };
+    return { points: chartPoints, ticks: Array.from({ length: tickCount + 1 }, (_, i) => { const value = low + (high - low) * i / tickCount; return { y: bottom - i * (bottom - top) / tickCount, label: value.toFixed(valueKey === 'value' && (high - low) / tickCount >= 1 ? 0 : 1) }; }), dateTicks };
   }
 
   protected selectBucketSize(bucket: 'month' | 'week'): void {
@@ -183,10 +201,11 @@ export class RunningTrends implements OnInit {
   }
 
   protected chooseBucket(bucket: RunningConsistencyBucket): void {
+    this.bucketRequest?.unsubscribe();
     this.selectedBucket.set(bucket);
     this.activities.set([]);
     this.activitiesLoading.set(true);
-    this.service.getConsistencyActivities(bucket.startDate, bucket.endDate).subscribe({
+    this.bucketRequest = this.service.getConsistencyActivities(bucket.startDate, bucket.endDate).subscribe({
       next: value => { this.activities.set(value); this.activitiesLoading.set(false); },
       error: () => { this.activities.set([]); this.activitiesLoading.set(false); },
     });

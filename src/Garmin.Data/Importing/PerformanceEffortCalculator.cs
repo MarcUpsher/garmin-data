@@ -5,7 +5,7 @@ namespace Garmin.Data.Importing;
 /// <summary>Deterministic rolling-distance effort extraction for timestamped running records.</summary>
 public static class PerformanceEffortCalculator
 {
-    public const int CurrentAlgorithmVersion = 2;
+    public const int CurrentAlgorithmVersion = 3;
     public static readonly int[] DistancesMeters = [1000, 2000, 5000, 6000, 10000];
 
     private const double MinSpeedMetersPerSecond = 0.8;
@@ -97,9 +97,11 @@ public static class PerformanceEffortCalculator
                 });
             else if (activity.DistanceMeters is { } fullDistance
                 && Math.Abs(fullDistance - target) <= Math.Max(5, target * .001)
-                && (activity.TimerTimeSeconds ?? activity.ElapsedTimeSeconds) is > 0)
+                && (activity.ElapsedTimeSeconds ?? activity.TimerTimeSeconds) is > 0)
             {
-                var duration = activity.TimerTimeSeconds ?? activity.ElapsedTimeSeconds!.Value;
+                // Rolling efforts use timestamp elapsed time. Prefer the same clock
+                // for whole activities; timer time is a fallback for sparse exports.
+                var duration = activity.ElapsedTimeSeconds ?? activity.TimerTimeSeconds!.Value;
                 if (fullDistance / duration is >= MinSpeedMetersPerSecond and <= MaxSpeedMetersPerSecond)
                     results.Add(new ActivityPerformanceEffort
                     {

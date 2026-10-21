@@ -12,6 +12,79 @@ describe('RunningTrends', () => {
     }).compileComponents();
   });
 
+  it('keeps inactive time visible and scales VO₂ Max to the observed values', async () => {
+    const fixture = TestBed.createComponent(RunningTrends);
+    fixture.detectChanges();
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(call => call.url === '/api/trends/consistency').flush({ buckets: [] });
+    const page = fixture.nativeElement as HTMLElement;
+    page.querySelectorAll<HTMLButtonElement>('.view-tabs button')[3].click();
+    http.expectOne(call => call.url === '/api/trends/vo2-max').flush({
+      rangeStart: '2026-04-21', rangeEnd: '2026-10-22', recordCount: 1,
+      points: [{ id: 1, date: '2026-05-01', value: 52, sport: 'RUNNING', deviceId: 'test' }],
+    });
+    await fixture.whenStable(); fixture.detectChanges();
+    const point = page.querySelector<SVGCircleElement>('.metric-chart circle')!;
+    expect(Number(point.getAttribute('cx'))).toBeLessThan(200);
+    expect(Array.from(page.querySelectorAll('.metric-chart .grid-lines text')).map(x => x.textContent?.trim()))
+      .toEqual(['51.0', '51.5', '52.0', '52.5', '53.0']);
+    expect(page.querySelector('.metric-chart')?.textContent).toContain('Oct');
+    http.verify();
+  });
+
+  it('groups repeated VO₂ rows while preserving distinct devices and values', async () => {
+    const fixture = TestBed.createComponent(RunningTrends); fixture.detectChanges();
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(call => call.url === '/api/trends/consistency').flush({ buckets: [] });
+    const page = fixture.nativeElement as HTMLElement;
+    page.querySelectorAll<HTMLButtonElement>('.view-tabs button')[3].click();
+    const point = { date: '2026-05-01', value: 52, sport: 'RUNNING', deviceId: 'test', subSport: null, isCalibrated: true };
+    http.expectOne(call => call.url === '/api/trends/vo2-max').flush({
+      rangeStart: '2026-04-21', rangeEnd: '2026-10-22', recordCount: 4,
+      points: [{ ...point, id: 1 }, { ...point, id: 2 }, { ...point, id: 3, deviceId: 'another' }, { ...point, id: 4, value: 51 }],
+    });
+    await fixture.whenStable(); fixture.detectChanges();
+    const points = [...page.querySelectorAll('.metric-chart circle')];
+    expect(points).toHaveLength(3);
+    expect(new Set(points.map(p => p.getAttribute('cx'))).size).toBe(3);
+    expect(page.querySelector('.metric-chart')?.textContent).toContain('grouped 2');
+    http.verify();
+  });
+
+  it('sizes monthly sleep bars to fit years of history', async () => {
+    const fixture = TestBed.createComponent(RunningTrends); fixture.detectChanges();
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(call => call.url === '/api/trends/consistency').flush({ buckets: [] });
+    const page = fixture.nativeElement as HTMLElement;
+    page.querySelectorAll<HTMLButtonElement>('.view-tabs button')[2].click();
+    http.expectOne(call => call.url === '/api/trends/sleep').flush({
+      rangeStart: '2020-01-01', rangeEnd: '2026-10-22', recordCount: 2,
+      points: ['2020-01-01', '2020-02-01'].map(month => ({ month, averageSleepHours: 7, nightCount: 1, excludedNightCount: 0, averageDeepSeconds: 3600, averageLightSeconds: 21600, averageRemSeconds: null, averageRespiration: null })),
+    });
+    await fixture.whenStable(); fixture.detectChanges();
+    const bars = [...page.querySelectorAll('.metric-bar')];
+    expect(bars).toHaveLength(2);
+    expect(Number(bars[0].getAttribute('x')) + Number(bars[0].getAttribute('width')))
+      .toBeLessThan(Number(bars[1].getAttribute('x')));
+    expect(page.querySelector('.metric-chart')?.textContent).toContain('REM —');
+    http.verify();
+  });
+
+  it('cancels the previous metric request when switching views', async () => {
+    const fixture = TestBed.createComponent(RunningTrends); fixture.detectChanges();
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(call => call.url === '/api/trends/consistency').flush({ buckets: [] });
+    const page = fixture.nativeElement as HTMLElement;
+    page.querySelectorAll<HTMLButtonElement>('.view-tabs button')[2].click();
+    const sleep = http.expectOne(call => call.url === '/api/trends/sleep');
+    page.querySelectorAll<HTMLButtonElement>('.view-tabs button')[3].click();
+    expect(sleep.cancelled).toBe(true);
+    http.expectOne(call => call.url === '/api/trends/vo2-max').flush({ points: [], recordCount: 0, rangeStart: '2026-04-21', rangeEnd: '2026-10-22' });
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(page.textContent).toContain('No VO₂ Max records in this range');
+    http.verify();
+  });
+
   it('loads continuous distance buckets and drills into the selected period', async () => {
     const fixture = TestBed.createComponent(RunningTrends);
     fixture.detectChanges();

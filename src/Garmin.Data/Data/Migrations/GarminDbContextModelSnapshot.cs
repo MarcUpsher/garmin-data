@@ -415,6 +415,21 @@ namespace Garmin.Data.Data.Migrations
                     b.Property<int?>("BodyBattery")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("BodyBatteryCharged")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BodyBatteryDrained")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BodyBatteryEndOfDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BodyBatteryHigh")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BodyBatteryLow")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateOnly>("CalendarDate")
                         .HasColumnType("TEXT");
 
@@ -424,14 +439,19 @@ namespace Garmin.Data.Data.Migrations
                     b.Property<int?>("DailyStepGoal")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("FloorsAscended")
-                        .HasColumnType("INTEGER");
+                    b.Property<double?>("FloorsAscendedMeters")
+                        .HasColumnType("REAL")
+                        .HasColumnName("FloorsAscended");
 
-                    b.Property<int?>("FloorsDescended")
-                        .HasColumnType("INTEGER");
+                    b.Property<double?>("FloorsDescendedMeters")
+                        .HasColumnType("REAL")
+                        .HasColumnName("FloorsDescended");
 
                     b.Property<double?>("HydrationMillilitres")
                         .HasColumnType("REAL");
+
+                    b.Property<int>("ImportVersion")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("ModerateIntensityMinutes")
                         .HasColumnType("INTEGER");

@@ -1,10 +1,11 @@
 using Garmin.Data;
+using Garmin.Data.Analysis;
 using Garmin.Data.Entities;
 using Garmin.Data.Importing;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://127.0.0.1:5080");
+builder.WebHost.UseUrls(builder.Configuration["urls"] ?? "http://127.0.0.1:5080");
 var defaultDataDirectory = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "garmin-data");
 var databasePath = Path.GetFullPath(Environment.GetEnvironmentVariable("GARMIN_DB_PATH")
@@ -454,8 +455,7 @@ app.MapPost("/api/trends/performance/rebuild", async (
     try
     {
         var activityIds = await db.Activities.AsNoTracking()
-            .Where(activity => (activity.ActivityType == "running" || activity.Sport == 1)
-                && activity.Records.Any())
+            .Where(activity => activity.ActivityType == "running" || activity.Sport == 1)
             .Select(activity => activity.Id).ToListAsync(cancellationToken);
         var effortCount = 0;
         foreach (var activityId in activityIds)
@@ -485,7 +485,11 @@ app.MapPost("/api/wellness/import", async (
         var result = await GarminWellnessExportImporter.ImportAsync(request.DirectoryPath, db, cancellationToken);
         return Results.Ok(result);
     }
-    catch (DirectoryNotFoundException) { return Results.BadRequest("That directory was not found. Select the DI_CONNECT folder containing the Garmin export subfolders."); }
+    catch (DirectoryNotFoundException) { return Results.Problem("Select the DI_CONNECT folder containing the Garmin export subfolders.", statusCode: 400); }
+    catch (System.Text.Json.JsonException) { return Results.Problem("An export file contains invalid JSON. The import was not saved.", statusCode: 400); }
+    catch (UnauthorizedAccessException) { return Results.Problem("The export folder cannot be read. Check its file permissions.", statusCode: 400); }
+    catch (IOException ex) { return Results.Problem($"The export could not be read: {ex.Message}", statusCode: 400); }
+    catch (ArgumentException) { return Results.Problem("Enter a valid DI_CONNECT folder path.", statusCode: 400); }
     finally { syncLock.Release(); }
 });
 
@@ -500,6 +504,7 @@ app.MapGet("/api/wellness/status", async (GarminDbContext db, CancellationToken 
         sleepFirstDate = sleepCount == 0 ? (DateOnly?)null : await db.SleepRecords.MinAsync(x => x.CalendarDate, cancellationToken),
         sleepLastDate = sleepCount == 0 ? (DateOnly?)null : await db.SleepRecords.MaxAsync(x => x.CalendarDate, cancellationToken),
         dailyWellnessRecords = wellnessCount,
+        dailyWellnessNeedsUpdate = await db.DailyWellnessRecords.CountAsync(x => x.ImportVersion < GarminWellnessExportImporter.CurrentWellnessImportVersion, cancellationToken),
         wellnessFirstDate = wellnessCount == 0 ? (DateOnly?)null : await db.DailyWellnessRecords.MinAsync(x => x.CalendarDate, cancellationToken),
         wellnessLastDate = wellnessCount == 0 ? (DateOnly?)null : await db.DailyWellnessRecords.MaxAsync(x => x.CalendarDate, cancellationToken),
         vo2MaxRecords = vo2Count,
@@ -510,45 +515,31 @@ app.MapGet("/api/wellness/status", async (GarminDbContext db, CancellationToken 
 
 app.MapGet("/api/trends/sleep", async (string? period, GarminDbContext db, CancellationToken cancellationToken) =>
 {
-    var records = await ApplyPeriod(db.SleepRecords.AsNoTracking(), period)
+    if (!TrendDateRange.IsValidPeriod(period)) return Results.BadRequest("period must be 6m, 1y, or all.");
+    var earliest = await db.SleepRecords.OrderBy(x => x.CalendarDate)
+        .Select(x => (DateOnly?)x.CalendarDate).FirstOrDefaultAsync(cancellationToken);
+    var range = TrendDateRange.Create(period, DateOnly.FromDateTime(DateTime.Today), earliest);
+    var records = await db.SleepRecords.AsNoTracking()
+        .Where(x => x.CalendarDate >= range.RangeStart && x.CalendarDate < range.RangeEnd)
         .OrderBy(x => x.CalendarDate).ToListAsync(cancellationToken);
-    var points = records.GroupBy(x => new { x.CalendarDate.Year, x.CalendarDate.Month })
-        .OrderBy(x => x.Key.Year).ThenBy(x => x.Key.Month).Select(group =>
-        {
-            var sleep = group.Where(x => x.DeepSeconds.HasValue || x.LightSeconds.HasValue || x.RemSeconds.HasValue)
-                .Select(x => (double)((x.DeepSeconds ?? 0) + (x.LightSeconds ?? 0) + (x.RemSeconds ?? 0))).ToArray();
-            return new SleepTrendPoint($"{group.Key.Year:D4}-{group.Key.Month:D2}-01", sleep.Length == 0 ? null : sleep.Average() / 3600,
-                sleep.Length, AverageInt(group.Select(x => x.DeepSeconds)), AverageInt(group.Select(x => x.LightSeconds)),
-                AverageInt(group.Select(x => x.RemSeconds)), AverageDouble(group.Select(x => x.AverageRespiration)));
-        }).ToArray();
-    return Results.Ok(new { points, recordCount = records.Count });
+    var points = SleepTrendCalculator.Calculate(records);
+    return Results.Ok(new { points, recordCount = records.Count, range.RangeStart, range.RangeEnd });
 });
 
 app.MapGet("/api/trends/vo2-max", async (string? period, string? sport, GarminDbContext db, CancellationToken cancellationToken) =>
 {
-    var query = ApplyPeriod(db.Vo2MaxRecords.AsNoTracking(), period);
+    if (!TrendDateRange.IsValidPeriod(period)) return Results.BadRequest("period must be 6m, 1y, or all.");
+    var query = db.Vo2MaxRecords.AsNoTracking();
     if (!string.IsNullOrWhiteSpace(sport)) query = query.Where(x => x.Sport == sport);
-    var rows = await query.OrderBy(x => x.CalendarDate).ThenBy(x => x.Sport).ToListAsync(cancellationToken);
+    var earliest = await query.OrderBy(x => x.CalendarDate)
+        .Select(x => (DateOnly?)x.CalendarDate).FirstOrDefaultAsync(cancellationToken);
+    var range = TrendDateRange.Create(period, DateOnly.FromDateTime(DateTime.Today), earliest);
+    var rows = await query.Where(x => x.CalendarDate >= range.RangeStart && x.CalendarDate < range.RangeEnd)
+        .OrderBy(x => x.CalendarDate).ThenBy(x => x.Sport).ThenBy(x => x.Id).ToListAsync(cancellationToken);
     var points = rows.Select(x => new Vo2TrendPoint(
         x.Id, x.CalendarDate.ToString("yyyy-MM-dd"), x.Vo2MaxValue, x.Sport, x.SubSport, x.DeviceId, x.MaxMet, x.IsCalibrated)).ToArray();
-    return Results.Ok(new { points, recordCount = points.Length });
+    return Results.Ok(new { points, recordCount = points.Length, range.RangeStart, range.RangeEnd });
 });
-
-static IQueryable<T> ApplyPeriod<T>(IQueryable<T> query, string? period) where T : class
-{
-    var start = period switch
-    {
-        "6m" => DateOnly.FromDateTime(DateTime.Today.AddMonths(-6)),
-        "1y" => DateOnly.FromDateTime(DateTime.Today.AddYears(-1)),
-        _ => (DateOnly?)null
-    };
-    if (start is null) return query;
-    if (typeof(T) == typeof(SleepRecord)) return (IQueryable<T>)(object)((IQueryable<SleepRecord>)query).Where(x => x.CalendarDate >= start.Value);
-    return (IQueryable<T>)(object)((IQueryable<Vo2MaxRecord>)query).Where(x => x.CalendarDate >= start.Value);
-}
-
-static double? AverageInt(IEnumerable<int?> values) { var items = values.Where(x => x.HasValue).Select(x => (double)x!.Value).ToArray(); return items.Length == 0 ? null : items.Average(); }
-static double? AverageDouble(IEnumerable<double?> values) { var items = values.Where(x => x.HasValue).Select(x => x!.Value).ToArray(); return items.Length == 0 ? null : items.Average(); }
 
 app.MapPut("/api/activities/{id:long}/hidden", async (
     long id,
@@ -734,7 +725,6 @@ internal sealed record ActivityListItem(
 
 internal sealed record ActivityVisibilityRequest(bool IsHidden);
 internal sealed record WellnessImportRequest(string DirectoryPath);
-internal sealed record SleepTrendPoint(string Month, double? AverageSleepHours, int NightCount, double? AverageDeepSeconds, double? AverageLightSeconds, double? AverageRemSeconds, double? AverageRespiration);
 internal sealed record Vo2TrendPoint(long Id, string Date, double? Value, string? Sport, string? SubSport, string? DeviceId, double? MaxMet, bool? IsCalibrated);
 
 internal sealed record ActivityPage(

@@ -109,14 +109,14 @@ export interface RunningPerformanceResponse {
   personalBestCount: number;
 }
 export interface PerformanceRebuildResult { activitiesProcessed: number; effortsUpdated: number; algorithmVersion: number; }
-export interface SleepTrendPoint { month: string; averageSleepHours: number | null; nightCount: number; averageDeepSeconds: number | null; averageLightSeconds: number | null; averageRemSeconds: number | null; averageRespiration: number | null; }
-export interface SleepTrendResponse { points: SleepTrendPoint[]; recordCount: number; }
+export interface SleepTrendPoint { month: string; averageSleepHours: number | null; nightCount: number; averageDeepSeconds: number | null; averageLightSeconds: number | null; averageRemSeconds: number | null; averageRespiration: number | null; excludedNightCount: number; }
+export interface SleepTrendResponse { points: SleepTrendPoint[]; recordCount: number; rangeStart: string; rangeEnd: string; }
 export interface Vo2TrendPoint { id: number; date: string; value: number | null; sport: string | null; subSport: string | null; deviceId: string | null; maxMet: number | null; isCalibrated: boolean | null; }
-export interface Vo2TrendResponse { points: Vo2TrendPoint[]; recordCount: number; }
-export interface WellnessImportResult { sleepAdded: number; dailyWellnessAdded: number; vo2MaxAdded: number; skipped: number; invalid: number; firstDate: string | null; lastDate: string | null; }
+export interface Vo2TrendResponse { points: Vo2TrendPoint[]; recordCount: number; rangeStart: string; rangeEnd: string; }
+export interface WellnessImportResult { sleepAdded: number; dailyWellnessAdded: number; vo2MaxAdded: number; dailyWellnessUpdated: number; skipped: number; invalid: number; firstDate: string | null; lastDate: string | null; }
 export interface WellnessImportStatus {
   sleepRecords: number; sleepFirstDate: string | null; sleepLastDate: string | null;
-  dailyWellnessRecords: number; wellnessFirstDate: string | null; wellnessLastDate: string | null;
+  dailyWellnessRecords: number; dailyWellnessNeedsUpdate: number; wellnessFirstDate: string | null; wellnessLastDate: string | null;
   vo2MaxRecords: number; vo2FirstDate: string | null; vo2LastDate: string | null;
 }
 export interface SyncResult { imported: number; skipped: number; failed: number; recordCount: number; lapCount: number; filesScanned: number; filesHashed: number; errors: string[]; mount: string | null; }

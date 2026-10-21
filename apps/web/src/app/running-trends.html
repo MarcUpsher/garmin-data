@@ -111,7 +111,7 @@
           <div class="trend-state" aria-live="polite">Loading performance efforts…</div>
         } @else if (performance(); as result) {
           @if (result.points.length === 0) {
-            <div class="trend-state no-efforts"><div><strong>No cached efforts for this range yet.</strong><p>Update efforts to calculate rolling times from the FIT record samples in your database. Activities without sufficiently dense timestamp and distance data are skipped.</p></div></div>
+            <div class="trend-state no-efforts"><div><strong>No current efforts for this range yet.</strong><p>Click Update efforts to rebuild results after a calculation change. Runs with enough FIT samples can show rolling efforts; matching full-distance runs can show their recorded elapsed time.</p></div></div>
           } @else {
             <div class="chart-card performance-card">
               <div class="chart-summary">
@@ -160,17 +160,17 @@
         @if (metricError()) { <div class="trend-state error" role="alert">{{ metricError() }} <button type="button" (click)="loadSleep()">Retry</button></div> }
         @else if (metricLoading()) { <div class="trend-state">Loading sleep history…</div> }
         @else if (sleep(); as result) {
-          @if (!result.points.length) { <div class="trend-state no-efforts">Import a Garmin Connect export to see your sleep history.</div> }
+          @if (!result.points.length) { <div class="trend-state no-efforts">No sleep records in this range. Import history from Data & Imports, or choose a wider date range.</div> }
           @else {
             <div class="chart-card"><div class="chart-summary"><div><span class="chart-summary-label">MONTHLY AVERAGE</span><strong>{{ result.recordCount }} nights in this range</strong></div><span class="chart-instruction">Hover a bar for sleep stages and sample count</span></div>
               <div class="chart-scroll"><svg class="performance-chart metric-chart" viewBox="0 0 1000 350" preserveAspectRatio="none" role="img" aria-label="Average sleep duration by month">
                 <g class="grid-lines">@for (tick of sleepChart().ticks; track $index) { <line x1="82" x2="990" [attr.y1]="tick.y" [attr.y2]="tick.y"/><text x="72" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }} h</text> }</g>
                 <text class="axis-title" x="16" y="20">hours</text>
                 @for (tick of sleepChart().dateTicks; track $index) { <text class="period-label" [attr.x]="tick.x" y="315" text-anchor="middle">{{ tick.label }}</text> }
-                @for (point of sleepChart().points; track point.x) { <g><title>{{ point.label }} · {{ point.value | number:'1.1-1' }} hours · {{ point.detail }}</title><rect class="distance-bar metric-bar" [attr.x]="point.x - 12" [attr.y]="point.y" width="24" [attr.height]="288 - point.y" rx="3" /></g> }
-              </svg></div><div class="chart-footer"><span>Month</span><span>Asleep duration sums deep, light and REM stages; awake time is excluded.</span></div>
+                @for (point of sleepChart().points; track point.key) { <g><title>{{ point.label }} · {{ point.value | number:'1.1-1' }} hours · {{ point.detail }}</title><rect class="distance-bar metric-bar" [attr.x]="point.x - point.width / 2" [attr.y]="point.y" [attr.width]="point.width" [attr.height]="288 - point.y" rx="3" /></g> }
+              </svg></div><div class="chart-footer"><span>Month</span><span>Only nights with measured sleep stages contribute. Missing and zero-duration nights are excluded; older devices may lack REM data.</span></div>
             </div>
-            <div class="wellness-observations">@for (point of result.points; track point.month) { <div><strong>{{ point.month | date:'MMM yyyy' }}</strong><span>{{ point.averageSleepHours === null ? '—' : (point.averageSleepHours | number:'1.1-1') + ' h average' }}</span><small>{{ point.nightCount }} nights · deep {{ point.averageDeepSeconds === null ? '—' : (point.averageDeepSeconds / 60 | number:'1.0-0') + ' min' }} · REM {{ point.averageRemSeconds === null ? '—' : (point.averageRemSeconds / 60 | number:'1.0-0') + ' min' }} · respiration {{ point.averageRespiration === null ? '—' : (point.averageRespiration | number:'1.1-1') }}</small></div> }</div>
+            <div class="wellness-observations">@for (point of result.points; track point.month) { <div><strong>{{ point.month | date:'MMM yyyy' }}</strong><span>{{ point.averageSleepHours === null ? '—' : (point.averageSleepHours | number:'1.1-1') + ' h average' }}</span><small>{{ point.nightCount }} measured nights · {{ point.excludedNightCount }} missing or unmeasured · deep {{ point.averageDeepSeconds === null ? '—' : (point.averageDeepSeconds / 60 | number:'1.0-0') + ' min' }} · REM {{ point.averageRemSeconds === null ? '—' : (point.averageRemSeconds / 60 | number:'1.0-0') + ' min' }} · respiration {{ point.averageRespiration === null ? '—' : (point.averageRespiration | number:'1.1-1') }}</small></div> }</div>
           }
         }
       </section>
@@ -183,14 +183,14 @@
         @if (metricError()) { <div class="trend-state error" role="alert">{{ metricError() }} <button type="button" (click)="loadVo2()">Retry</button></div> }
         @else if (metricLoading()) { <div class="trend-state">Loading VO₂ Max history…</div> }
         @else if (vo2(); as result) {
-          @if (!result.points.length) { <div class="trend-state no-efforts">Import a Garmin Connect export to see VO₂ Max history.</div> }
+          @if (!result.points.length) { <div class="trend-state no-efforts">No VO₂ Max records in this range. Import history from Data & Imports, or choose a wider date range.</div> }
           @else {
             <div class="chart-card"><div class="chart-summary"><div><span class="chart-summary-label">GARMIN ESTIMATES</span><strong>{{ result.points.length }} records</strong></div><span class="chart-instruction">Hover a point for date, sport and calibration details</span></div>
               <div class="chart-scroll"><svg class="performance-chart metric-chart" viewBox="0 0 1000 350" preserveAspectRatio="none" role="img" aria-label="VO₂ Max observations over time">
                 <g class="grid-lines">@for (tick of vo2Chart().ticks; track $index) { <line x1="82" x2="990" [attr.y1]="tick.y" [attr.y2]="tick.y"/><text x="72" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }}</text> }</g>
                 <text class="axis-title" x="16" y="20">mL/kg/min</text>
                 @for (tick of vo2Chart().dateTicks; track $index) { <text class="period-label" [attr.x]="tick.x" y="315" text-anchor="middle">{{ tick.label }}</text> }
-                @for (point of vo2Chart().points; track point.label + point.x + point.value) { <g><title>{{ point.label }} · {{ point.value | number:'1.0-1' }} · {{ point.detail }}</title><circle class="effort-point" [attr.cx]="point.x" [attr.cy]="point.y" r="5" /></g> }
+                @for (point of vo2Chart().points; track point.key) { <g><title>{{ point.label }} · {{ point.value | number:'1.0-1' }} · {{ point.detail }}</title><circle class="effort-point" [attr.cx]="point.x" [attr.cy]="point.y" r="5" /></g> }
               </svg></div><div class="chart-footer"><span>Date</span><span>Same-day points are offset slightly for visibility; VO₂ values stay unchanged. Identical same-device entries are grouped.</span></div>
             </div>
             <div class="wellness-observations">@for (point of result.points; track point.id) { <div><strong>{{ point.date | date:'EEE, d MMM yyyy' }}</strong><span>{{ point.value === null ? 'No VO₂ Max value' : (point.value | number:'1.0-1') + ' mL/kg/min' }}</span><small>{{ point.sport || 'Sport unspecified' }}{{ point.subSport ? ' · ' + point.subSport : '' }}{{ point.isCalibrated === false ? ' · uncalibrated' : '' }}</small></div> }</div>

@@ -30,11 +30,16 @@ export class DataManagement implements OnInit {
   }
 
   protected importWellness(): void {
+    if (this.busy()) return;
     if (!this.directory().trim()) { this.error.set('Enter the path to the DI_CONNECT folder in your Garmin Connect export.'); return; }
     this.busy.set(true); this.error.set(null); this.result.set(null);
     this.service.importWellness(this.directory().trim()).subscribe({
       next: value => { this.result.set(value); this.busy.set(false); this.refresh(); },
-      error: err => { this.busy.set(false); this.error.set(err?.error?.message ?? err?.error ?? 'The Garmin export could not be imported.'); },
+      error: err => {
+        this.busy.set(false);
+        const body = err?.error;
+        this.error.set(typeof body === 'string' ? body : body?.detail ?? body?.message ?? 'The Garmin export could not be imported.');
+      },
     });
   }
 

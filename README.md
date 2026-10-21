@@ -84,6 +84,9 @@ make the watch files available first.
 Open **Trends → Performance** and click **Update efforts** to calculate or rebuild cached running
 efforts for existing activities. New FIT files receive calculated efforts during import. The
 algorithm version is stored with the results so they can be rebuilt when the calculation changes.
+After upgrading to algorithm version 3, click **Update efforts** once to refresh existing results.
+Recorded full-distance efforts prefer elapsed time so pauses are counted consistently with rolling
+efforts; timer time is used only when the export has no elapsed duration.
 
 ### Restore data from a Garmin Connect export
 
@@ -92,6 +95,16 @@ full activity rebuild, catalog the archive FIT files and create a new database f
 importer expects an empty activity table; review its output before switching `GARMIN_DB_PATH` to
 the rebuilt database. Then run the wellness import against that database as well. The full-export
 workflow and options are documented in the command examples below.
+
+The wellness importer reads stress from Garmin's `TOTAL` daily aggregate, respiration from the
+average waking value, hydration in millilitres, and Body Battery from its named daily statistics.
+Ascending/descending floor measurements are stored in metres. Imported daily records carry a parser
+version; importing the same export repairs records from an older parser without changing their IDs.
+Data & Imports indicates when this is needed.
+
+Sleep trends use measured deep/light sleep plus REM where recorded. Missing, invalid and zero-duration
+nights are excluded from averages and counted separately. Earlier devices with no REM measurement
+still contribute their measured deep/light sleep; missing REM is displayed as unavailable.
 
 ## Import data from the command line
 
@@ -139,7 +152,19 @@ dotnet build apps/Garmin.Api/Garmin.Api.csproj
 dotnet build tools/Garmin.Import/Garmin.Import.csproj
 npm run build --prefix apps/web
 npm test --prefix apps/web
+dotnet run --project tests/Garmin.Data.Checks
 ```
+
+The data checks use synthetic records and a temporary SQLite database, with no additional test-runner
+packages. To also validate migrations and reimporting against a consistent copy of an existing
+database, supply the export folder and database path:
+
+```sh
+dotnet run --project tests/Garmin.Data.Checks -- /path/to/DI_CONNECT /path/to/activities.db
+```
+
+This optional check opens the source database read-only, backs it up to a temporary database,
+and migrates and repairs only the copy. Both temporary databases are removed when the checks finish.
 
 EF Core migrations are in `src/Garmin.Data/Data/Migrations`. The pinned `dotnet-ef` tool can be
 restored with `dotnet tool restore`. Create a migration from the repository root with:

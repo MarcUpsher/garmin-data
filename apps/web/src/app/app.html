@@ -6,12 +6,12 @@
     </a>
     <div class="nav-label">LIBRARY</div>
     <nav class="primary-nav" aria-label="Main navigation">
-      <a class="nav-item" [class.active]="!isTrends() && !isData()" href="/" [attr.aria-current]="!isTrends() && !isData() ? 'page' : null">
+      <a class="nav-item" [class.active]="!isTrends() && !isData()" href="/" aria-label="Activities" title="Activities" [attr.aria-current]="!isTrends() && !isData() ? 'page' : null">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 3v4M16 3v4M4 10h16M8 14h2m4 0h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <span>Activities</span>@if (page(); as result) { <span class="nav-count">{{ result.totalCount }}</span> }
       </a>
-      <a class="nav-item" [class.active]="isTrends()" routerLink="/trends" [attr.aria-current]="isTrends() ? 'page' : null"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Trends</span></a>
-      <a class="nav-item" [class.active]="isData()" routerLink="/data" [attr.aria-current]="isData() ? 'page' : null"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><ellipse cx="12" cy="5" rx="7.5" ry="3" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 5v7c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V5M4.5 12v7c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-7" stroke="currentColor" stroke-width="1.6"/></svg><span>Data &amp; Imports</span></a>
+      <a class="nav-item" [class.active]="isTrends()" routerLink="/trends" aria-label="Trends" title="Trends" [attr.aria-current]="isTrends() ? 'page' : null"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Trends</span></a>
+      <a class="nav-item" [class.active]="isData()" routerLink="/data" aria-label="Data &amp; Imports" title="Data &amp; Imports" [attr.aria-current]="isData() ? 'page' : null"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><ellipse cx="12" cy="5" rx="7.5" ry="3" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 5v7c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V5M4.5 12v7c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-7" stroke="currentColor" stroke-width="1.6"/></svg><span>Data &amp; Imports</span></a>
     </nav>
     <div class="sidebar-spacer"></div>
     <div class="local-card"><span class="local-indicator"></span><div><strong>Your data stays local</strong><small>Stored on this computer</small></div></div>
