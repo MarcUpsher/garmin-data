@@ -22,6 +22,7 @@ public sealed class Activity
     public DateTime? StartedAtLocal { get; set; }
     public string? ActivityType { get; set; }
     public string? ActivityTitle { get; set; }
+    public bool IsHidden { get; set; }
     public int? Sport { get; set; }
     public int? SubSport { get; set; }
     public double? ElapsedTimeSeconds { get; set; }
@@ -51,6 +52,7 @@ public sealed class Activity
 
     public ICollection<ActivityLap> Laps { get; set; } = new List<ActivityLap>();
     public ICollection<ActivityRecord> Records { get; set; } = new List<ActivityRecord>();
+    public ICollection<ActivityPerformanceEffort> PerformanceEfforts { get; set; } = new List<ActivityPerformanceEffort>();
     public ICollection<ActivityExtraField> ExtraFields { get; set; } = new List<ActivityExtraField>();
     public ICollection<ImportedDeviceFile> ImportedDeviceFiles { get; set; } = new List<ImportedDeviceFile>();
     public ActivitySourceFile? SourceFile { get; set; }

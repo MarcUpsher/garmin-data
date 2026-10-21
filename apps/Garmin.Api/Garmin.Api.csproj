@@ -6,5 +6,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Garmin.Data/Garmin.Data.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>

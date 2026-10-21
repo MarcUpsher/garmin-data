@@ -25,7 +25,7 @@ public static class GarminConnectExportActivityImporter
 {
     // Confirmed by exact-time comparison of export rows with the existing CSV/FIT imports.
     private const double ExportDistanceUnitsPerMeter = 100.0;
-    private const double ExportSpeedUnitsPerMetersPerSecond = 10.0;
+    private const double ExportSpeedUnitsPerMetersPerSecond = 0.1;
     private const double ExportDurationUnitsPerSecond = 1000.0;
     private const double ExportEnergyUnitsPerKilocalorie = 4.19002;
     private const double ExportRunCadenceUnitsPerStepPerMinute = 0.5;
@@ -182,6 +182,7 @@ public static class GarminConnectExportActivityImporter
                         throw new InvalidDataException("FIT contents no longer match the catalog hash.");
 
                     var decoded = FitActivityDecoder.Decode(entry.FullName, sourceBytes, actualHash);
+                    var efforts = PerformanceEffortCalculator.Calculate(decoded);
                     if (decoded.StartedAtUtc is { } fitStart
                         && byStartTime.TryGetValue(DateTime.SpecifyKind(fitStart, DateTimeKind.Utc), out var existingId))
                     {
@@ -201,6 +202,12 @@ public static class GarminConnectExportActivityImporter
                             record.ActivityId = existingId;
                             record.Activity = canonical;
                             db.ActivityRecords.Add(record);
+                        }
+                        foreach (var effort in efforts)
+                        {
+                            effort.ActivityId = existingId;
+                            effort.Activity = canonical;
+                            db.ActivityPerformanceEfforts.Add(effort);
                         }
                         db.ActivitySourceEvidence.Add(new ActivitySourceEvidence
                         {
@@ -225,6 +232,7 @@ public static class GarminConnectExportActivityImporter
                             SourceFormat = "FIT",
                             SourceBytes = sourceBytes
                         };
+                        foreach (var effort in efforts) decoded.PerformanceEfforts.Add(effort);
                         db.Activities.Add(decoded);
                         fitOnly++;
                     }
@@ -305,6 +313,7 @@ public static class GarminConnectExportActivityImporter
             try
             {
                 var decoded = FitActivityDecoder.Decode(filename, bytes, actualHash);
+                var efforts = PerformanceEffortCalculator.Calculate(decoded);
                 var canonical = new Activity
                 {
                     Id = activityId, SourceKind = "", SourceSha256 = "", OriginalFileName = ""
@@ -323,6 +332,12 @@ public static class GarminConnectExportActivityImporter
                     record.ActivityId = activityId;
                     record.Activity = canonical;
                     db.ActivityRecords.Add(record);
+                }
+                foreach (var effort in efforts)
+                {
+                    effort.ActivityId = activityId;
+                    effort.Activity = canonical;
+                    db.ActivityPerformanceEfforts.Add(effort);
                 }
                 db.ActivitySourceEvidence.Add(new ActivitySourceEvidence
                 {

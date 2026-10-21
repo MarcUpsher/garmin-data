@@ -1,10 +1,10 @@
 <div class="detail-surface" [class.drawer-mode]="isDrawer">
   <section class="detail-panel" [attr.role]="isDrawer ? 'complementary' : null" aria-labelledby="detail-title">
     <header class="detail-header">
-      <a class="back-link" href="/" (click)="$event.preventDefault(); close()">← <span>Activities</span></a>
+      <a mat-button class="back-link" href="/" (click)="$event.preventDefault(); close()">← <span>{{ returnLabel }}</span></a>
       <div class="detail-actions">
         @if (isDrawer && data(); as result) { <a class="open-page" [href]="'/activity/' + result.activity.id" target="_blank" rel="noopener">Open in new tab ↗</a> }
-        @if (isDrawer) { <button class="close-button" type="button" aria-label="Close details" (click)="close()">×</button> }
+        @if (isDrawer) { <button mat-icon-button class="close-button" type="button" aria-label="Close details" (click)="close()"><span aria-hidden="true">×</span></button> }
       </div>
     </header>
     @if (loading()) {
@@ -20,7 +20,19 @@
           @if (result.activity.distanceMeters !== null) { <div class="heading-distance"><strong>{{ formatDistance(result.activity.distanceMeters) }}</strong><span>distance</span></div> }
         </div>
 
-        <section class="detail-section laps-section" aria-labelledby="laps-title">
+        <mat-card appearance="outlined" class="detail-section totals-section" role="region" aria-labelledby="totals-title">
+          <div class="section-heading"><div><h2 id="totals-title">Totals</h2><p>Overall activity summary</p></div></div>
+          <div class="totals-grid">
+            <div class="total-card"><span>Distance</span><strong>{{ formatDistance(result.activity.distanceMeters) }}</strong></div>
+            <div class="total-card"><span>Time</span><strong>{{ formatDuration(result.activity.elapsedTimeSeconds) }}</strong></div>
+            <div class="total-card"><span>Avg pace</span><strong>{{ formatPace(result.activity.averagePaceSecondsPerKilometer ?? lapPace(result.activity.averageSpeedMetersPerSecond, result.activity.distanceMeters, result.activity.elapsedTimeSeconds)) }}</strong></div>
+            <div class="total-card"><span>Best pace</span><strong>{{ formatPace(result.activity.bestPaceSecondsPerKilometer ?? lapPace(result.activity.maximumSpeedMetersPerSecond, null, null)) }}</strong></div>
+            <div class="total-card"><span>Avg heart rate</span><strong>{{ heartRate(result.activity.averageHeartRateBpm) }}</strong></div>
+            <div class="total-card"><span>Max heart rate</span><strong>{{ heartRate(result.activity.maximumHeartRateBpm) }}</strong></div>
+          </div>
+        </mat-card>
+
+        <mat-card appearance="outlined" class="detail-section laps-section" role="region" aria-labelledby="laps-title">
           <div class="section-heading"><div><h2 id="laps-title">Laps</h2><p>Split-by-split performance</p></div><span class="section-count">{{ result.laps.length }} {{ result.laps.length === 1 ? 'lap' : 'laps' }}</span></div>
           @if (result.laps.length === 0) {
             <div class="section-empty">No lap splits were recorded for this activity.</div>
@@ -34,43 +46,69 @@
               }</tbody>
             </table></div>
           }
-        </section>
+        </mat-card>
 
-        <section class="detail-section totals-section" aria-labelledby="totals-title">
-          <div class="section-heading"><div><h2 id="totals-title">Totals</h2><p>Overall activity summary</p></div></div>
-          <div class="totals-grid">
-            <div class="total-card"><span>Distance</span><strong>{{ formatDistance(result.activity.distanceMeters) }}</strong></div>
-            <div class="total-card"><span>Time</span><strong>{{ formatDuration(result.activity.elapsedTimeSeconds) }}</strong></div>
-            <div class="total-card"><span>Avg pace</span><strong>{{ formatPace(result.activity.averagePaceSecondsPerKilometer ?? lapPace(result.activity.averageSpeedMetersPerSecond, result.activity.distanceMeters, result.activity.elapsedTimeSeconds)) }}</strong></div>
-            <div class="total-card"><span>Best pace</span><strong>{{ formatPace(result.activity.bestPaceSecondsPerKilometer ?? lapPace(result.activity.maximumSpeedMetersPerSecond, null, null)) }}</strong></div>
-            <div class="total-card"><span>Avg heart rate</span><strong>{{ heartRate(result.activity.averageHeartRateBpm) }}</strong></div>
-            <div class="total-card"><span>Max heart rate</span><strong>{{ heartRate(result.activity.maximumHeartRateBpm) }}</strong></div>
-          </div>
-        </section>
-
-        <section class="detail-section charts-section" aria-labelledby="charts-title">
-          <div class="section-heading chart-heading"><div><h2 id="charts-title">Effort over time</h2><p>Aligned to the same elapsed-time axis</p></div>
-            <div class="chart-legend" aria-label="Chart legend"><span><i class="hr-swatch"></i>Heart rate (bpm)</span><span><i class="pace-swatch"></i>Pace (min/km)</span><span><i class="elevation-swatch"></i>Elevation (m)</span></div>
+        <mat-card appearance="outlined" class="detail-section charts-section" role="region" aria-labelledby="charts-title">
+          <div class="section-heading chart-heading"><div><h2 id="charts-title">Run profile</h2><p>Hover to inspect a moment, or drag across the chart to analyse a section</p></div>
+            <div class="chart-controls">
+              <div class="axis-toggle" role="group" aria-label="Horizontal chart axis">
+                <button mat-button type="button" [class.selected]="axisMode() === 'time'" (click)="setAxis('time')">Time</button>
+                <button mat-button type="button" [class.selected]="axisMode() === 'distance'" [disabled]="!chart().distanceAxisAvailable" (click)="setAxis('distance')">Distance</button>
+              </div>
+              <div class="chart-legend" aria-label="Chart legend"><span><i class="hr-swatch"></i>Heart rate</span><span><i class="pace-swatch"></i>Pace · smoothed, faster higher</span><span><i class="elevation-swatch"></i>Elevation profile</span></div>
+            </div>
           </div>
           @if (!chart().hasSamples) {
             <div class="section-empty">No heart rate, pace, or elevation samples are available for this activity.</div>
           } @else {
-            <div class="chart-scroll"><svg class="activity-chart" viewBox="0 0 1000 348" preserveAspectRatio="none" role="img" aria-label="Heart rate, pace and elevation over a shared elapsed-time axis">
+            <div class="chart-scroll"><svg class="activity-chart" viewBox="0 0 1000 420" preserveAspectRatio="none" role="img" aria-label="Heart rate and inverted pace over a terrain profile" (pointerdown)="chartPointerDown($event)" (pointermove)="chartPointerMove($event)" (pointerup)="chartPointerUp($event)" (pointercancel)="chartPointerUp($event)" (pointerleave)="chartPointerLeave()">
               <g class="chart-guides">@for (tick of chart().ticks; track $index) {
-                <line [attr.x1]="tick.x" [attr.x2]="tick.x" y1="14" y2="294" />
-                <text [attr.x]="tick.x" y="326" [attr.text-anchor]="$index === 0 ? 'start' : $index === 4 ? 'end' : 'middle'">{{ tick.label }}</text>
+                <line [attr.x1]="tick.x" [attr.x2]="tick.x" y1="32" y2="370" />
+                <text [attr.x]="tick.x" y="405" [attr.text-anchor]="$index === 0 ? 'start' : $index === 4 ? 'end' : 'middle'">{{ tick.label }}</text>
               }</g>
-              @for (lane of chart().lanes; track lane.key) {
-                <line class="lane-baseline" x1="88" x2="978" [attr.y1]="lane.bottom" [attr.y2]="lane.bottom" />
-                <text class="range-label" x="4" [attr.y]="lane.top + 4">{{ lane.key === 'pace' ? lane.minimum : lane.maximum }}</text>
-                <text class="range-label" x="4" [attr.y]="lane.bottom">{{ lane.key === 'pace' ? lane.maximum : lane.minimum }}</text>
-                @if (lane.available) { <polyline class="chart-line" [attr.points]="lane.points" [attr.stroke]="lane.color" /> }
-                @else { <text class="missing-lane" x="535" [attr.y]="(lane.top + lane.bottom) / 2">No {{ lane.label.toLowerCase() }} samples</text> }
-              }
+              <line class="plot-baseline" x1="92" x2="908" y1="286" y2="286" />
+              <line class="elevation-baseline" x1="92" x2="908" y1="370" y2="370" />
+              @if (chart().hasElevation) { <path class="elevation-area" [attr.d]="chart().elevationPath" /> }
+              @if (chart().hasHeartRate) { <path class="chart-line hr-line" [attr.d]="chart().heartRatePath" /> }
+              @if (chart().hasPace) { <path class="chart-line pace-line" [attr.d]="chart().pacePath" /> }
+              <text class="range-label hr-range" x="8" y="39">{{ chart().heartRateMax }}</text>
+              <text class="range-label hr-range" x="8" y="283">{{ chart().heartRateMin }}</text>
+              <text class="range-label pace-range" x="992" y="39" text-anchor="end">{{ chart().paceMin }}</text>
+              <text class="range-label pace-range" x="992" y="283" text-anchor="end">{{ chart().paceMax }}</text>
+              <text class="profile-title" x="101" y="339">Elevation (m)</text>
+              @if (hoverX() !== null) { <line class="chart-crosshair" [attr.x1]="hoverX()" [attr.x2]="hoverX()" y1="28" y2="371" /> }
+              @if (selection()) { <rect class="chart-selection" [attr.x]="selectedLeft()" y="28" [attr.width]="selectedWidth()" height="343" /> }
             </svg></div>
-            <p class="chart-axis-label">Elapsed time</p>
+            <p class="chart-axis-label">{{ chart().axisTitle }}</p>
+            <div class="chart-inspection">
+              @if (hovered(); as point) {
+                <div class="inspection-values" aria-live="polite">
+                  <span><small>{{ chart().axisTitle }}</small><strong>{{ axisPosition(point) }}</strong></span>
+                  <span><small>Elevation</small><strong>{{ elevation(point.elevation) }}</strong></span>
+                  <span><small>Pace</small><strong>{{ formatPace(point.pace) }}</strong></span>
+                  <span><small>Heart rate</small><strong>{{ heartRate(point.heartRate) }}</strong></span>
+                </div>
+              } @else { <p class="chart-hint">Drag across the plot to select a stretch of this run.</p> }
+            </div>
+            @if (selection()) {
+              <div class="segment-summary" aria-live="polite">
+                <div class="segment-title"><div><strong>Selected section</strong><span>{{ segmentLoading() ? 'Calculating from all recorded samples…' : 'Summary for this stretch' }}</span></div><button mat-button type="button" (click)="clearSelection()">Clear</button></div>
+                @if (segment(); as selected) { <div class="segment-values">
+                  <span class="segment-range"><small>Section · time · distance</small><strong>{{ formatDuration(selected.startElapsedSeconds) }}–{{ formatDuration(selected.endElapsedSeconds) }} · {{ formatDistance(selected.startDistanceMeters) }}–{{ formatDistance(selected.endDistanceMeters) }}</strong></span>
+                  <span><small>Distance</small><strong>{{ formatDistance(selected.distanceMeters) }}</strong></span>
+                  <span><small>Duration</small><strong>{{ formatDuration(selected.durationSeconds) }}</strong></span>
+                  <span><small>Elevation gain · filtered estimate</small><strong>{{ elevation(selected.elevationGainMeters) }}</strong></span>
+                  <span><small>Elevation loss · filtered estimate</small><strong>{{ elevation(selected.elevationLossMeters) }}</strong></span>
+                  <span><small>Net elevation change</small><strong>{{ elevationChange(selected.netElevationChangeMeters) }}</strong></span>
+                  <span><small>Average pace</small><strong>{{ formatPace(selected.averagePaceSecondsPerKilometer) }}</strong></span>
+                  <span><small>Heart rate · start → end</small><strong>{{ heartRateTransition(selected.startHeartRateBpm, selected.endHeartRateBpm) }}</strong></span>
+                  <span><small>Average heart rate</small><strong>{{ heartRate(selected.averageHeartRateBpm) }}</strong></span>
+                  <span><small>Peak heart rate</small><strong>{{ heartRate(selected.peakHeartRateBpm) }}</strong></span>
+                </div> }
+              </div>
+            }
           }
-        </section>
+        </mat-card>
       </div>
     }
   </section>

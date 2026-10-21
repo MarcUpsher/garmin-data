@@ -6,11 +6,11 @@
     </a>
     <div class="nav-label">LIBRARY</div>
     <nav class="primary-nav" aria-label="Main navigation">
-      <a class="nav-item active" href="#activities" aria-current="page">
+      <a class="nav-item" [class.active]="!isTrends()" href="/" [attr.aria-current]="!isTrends() ? 'page' : null">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 3v4M16 3v4M4 10h16M8 14h2m4 0h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <span>Activities</span>@if (page(); as result) { <span class="nav-count">{{ result.totalCount }}</span> }
       </a>
-      <span class="nav-item disabled" title="Coming later"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Trends</span><span class="soon">SOON</span></span>
+      <a class="nav-item" [class.active]="isTrends()" routerLink="/trends" [attr.aria-current]="isTrends() ? 'page' : null"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Trends</span></a>
     </nav>
     <div class="sidebar-spacer"></div>
     <div class="local-card"><span class="local-indicator"></span><div><strong>Your data stays local</strong><small>Stored on this computer</small></div></div>
@@ -18,31 +18,56 @@
   </aside>
 
   <main class="main-content" id="activities">
-    <header class="topbar"><div class="breadcrumb"><span>Library</span><span class="crumb-slash">/</span><strong>Activities</strong></div><div class="topbar-right"><span class="sync-dot"></span><span>Local database</span><button class="theme-toggle" type="button" (click)="toggleTheme()" [attr.aria-label]="darkTheme() ? 'Switch to light theme' : 'Switch to dark theme'" [attr.aria-pressed]="darkTheme()"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true">@if (darkTheme()) { <circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.5"/><path d="M10 2.5v1.6m0 11.8v1.6m7.5-7.5h-1.6M4.1 10H2.5m12.8-5.3-1.1 1.1m-8.4 8.4-1.1 1.1m10.6 0-1.1-1.1m-8.4-8.4L4.7 4.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/> } @else { <path d="M16.7 12.1A6.8 6.8 0 0 1 7.9 3.3 6.8 6.8 0 1 0 16.7 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="m14.8 4.1.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1-1.1-.5 1.1-.5.5-1.1Z" fill="currentColor"/> }</svg>{{ darkTheme() ? 'Light mode' : 'Dark mode' }}</button><button class="sync-button" type="button" [disabled]="syncing()" (click)="syncWatch()"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.3 7.2A6.5 6.5 0 0 0 4.8 5.1L3.5 6.5m0 0V3.8m0 2.7h2.7M3.7 12.8a6.5 6.5 0 0 0 11.5 2.1l1.3-1.4m0 0v2.7m0-2.7h-2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ syncing() ? 'Syncing…' : 'Sync watch' }}</button></div></header>
+    <header class="topbar">
+      <div class="breadcrumb"><span>Library</span><span class="crumb-slash">/</span><strong>Activities</strong></div>
+      <div class="topbar-right">
+        <span class="sync-dot"></span><span>Local database</span>
+        <button mat-button class="theme-toggle" type="button" (click)="toggleTheme()" [attr.aria-label]="darkTheme() ? 'Switch to light theme' : 'Switch to dark theme'" [attr.aria-pressed]="darkTheme()">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">@if (darkTheme()) { <circle cx="10" cy="10" r="3.2" stroke="currentColor" stroke-width="1.5"/><path d="M10 2.5v1.6m0 11.8v1.6m7.5-7.5h-1.6M4.1 10H2.5m12.8-5.3-1.1 1.1m-8.4 8.4-1.1 1.1m10.6 0-1.1-1.1m-8.4-8.4L4.7 4.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/> } @else { <path d="M16.7 12.1A6.8 6.8 0 0 1 7.9 3.3 6.8 6.8 0 1 0 16.7 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="m14.8 4.1.5 1.1 1.1.5-1.1.5-.5 1.1-.5-1.1-1.1-.5 1.1-.5.5-1.1Z" fill="currentColor"/> }</svg>
+          {{ darkTheme() ? 'Light mode' : 'Dark mode' }}
+        </button>
+        <button mat-flat-button class="sync-button" type="button" [disabled]="syncing()" (click)="syncWatch()">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.3 7.2A6.5 6.5 0 0 0 4.8 5.1L3.5 6.5m0 0V3.8m0 2.7h2.7M3.7 12.8a6.5 6.5 0 0 0 11.5 2.1l1.3-1.4m0 0v2.7m0-2.7h-2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{ syncing() ? 'Syncing…' : 'Sync watch' }}
+        </button>
+      </div>
+    </header>
     <section class="content-wrap">
       <div class="page-heading"><div><p class="eyebrow">YOUR TRAINING HISTORY</p><h1>Activities</h1><p class="subtitle">Every session, collected in one place.</p></div><div class="heading-count"><span class="count-number">{{ page()?.totalCount ?? '—' }}</span><span class="count-label">activities</span></div></div>
 
       @if (syncMessage()) { <div class="sync-notice" role="status">{{ syncMessage() }}</div> }
-      @if (syncError()) { <div class="sync-notice sync-error" role="alert">{{ syncError() }}</div> }
-
-      <section class="activity-panel" aria-label="Activity list">
-        <div class="panel-toolbar"><div class="toolbar-title"><h2>All activities</h2>@if (page(); as result) { <span class="result-range">{{ result.totalCount }} records</span> }</div>
-          <label class="filter-control"><span class="filter-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M3 5h14M5.5 10h9M8 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
-            <select #typeSelect [value]="selectedType()" (change)="changeType(typeSelect.value)" aria-label="Filter by activity type"><option value="">All types</option><option value="running">Running</option><option value="indoor_cardio">Cardio</option><option value="cycling">Cycling</option><option value="walking">Walking</option><option value="other">Other</option><option value="strength_training">Strength training</option><option value="casual_walking">Casual walking</option></select>
-            <svg class="select-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </label>
+      <mat-card appearance="outlined" class="activity-panel" role="region" aria-label="Activity list">
+        <div class="panel-toolbar"><div class="toolbar-title"><h2>{{ showingHidden() ? 'Hidden activities' : 'All activities' }}</h2>@if (page(); as result) { <span class="result-range">{{ result.totalCount }} records</span> }</div>
+          <div class="filter-controls">
+            <mat-form-field appearance="outline" class="activity-filter" subscriptSizing="dynamic">
+              <mat-label>Activity type</mat-label>
+              <mat-select [value]="selectedType()" (selectionChange)="changeType($event.value)">
+                <mat-option value="">All types</mat-option><mat-option value="running">Running</mat-option><mat-option value="indoor_cardio">Cardio</mat-option><mat-option value="cycling">Cycling</mat-option><mat-option value="walking">Walking</mat-option><mat-option value="other">Other</mat-option><mat-option value="strength_training">Strength training</mat-option><mat-option value="casual_walking">Casual walking</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="weekday-filter" subscriptSizing="dynamic">
+              <mat-label>Day of week</mat-label>
+              <mat-select [value]="selectedDay()" (selectionChange)="changeDay($event.value)">
+                <mat-option value="">All days</mat-option><mat-option [value]="0">Sunday</mat-option><mat-option [value]="1">Monday</mat-option><mat-option [value]="2">Tuesday</mat-option><mat-option [value]="3">Wednesday</mat-option><mat-option [value]="4">Thursday</mat-option><mat-option [value]="5">Friday</mat-option><mat-option [value]="6">Saturday</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-radio-group class="visibility-filter" aria-label="Activity visibility" [value]="showingHidden()" (change)="changeVisibility($event.value)">
+              <mat-radio-button [value]="false">Visible</mat-radio-button>
+              <mat-radio-button [value]="true">Hidden</mat-radio-button>
+            </mat-radio-group>
+          </div>
         </div>
 
         @if (error()) {
-          <div class="state-message" role="alert"><span class="state-icon">!</span><div><strong>Couldn’t load activities</strong><p>{{ error() }}</p></div><button class="retry-button" type="button" (click)="load()">Try again</button></div>
+          <div class="state-message" role="alert"><span class="state-icon">!</span><div><strong>Couldn’t load activities</strong><p>{{ error() }}</p></div><button mat-stroked-button class="retry-button" type="button" (click)="load()">Try again</button></div>
         } @else if (loading()) {
           <div class="loading-state" aria-live="polite"><span class="spinner"></span>Loading your activity history…</div>
         } @else if (page(); as result) {
           @if (result.items.length === 0) {
-            <div class="empty-state"><div class="empty-icon">⌁</div><strong>No activities found</strong><p>Try choosing a different activity type.</p></div>
+            <div class="empty-state"><div class="empty-icon">⌁</div><strong>{{ showingHidden() ? 'No hidden activities' : 'No activities found' }}</strong><p>{{ showingHidden() ? 'Activities you hide will appear here.' : 'Try changing the activity type or day filter.' }}</p></div>
           } @else {
             <div class="table-scroll"><table>
-              <thead><tr><th scope="col">ACTIVITY</th><th scope="col">DATE</th><th scope="col">DISTANCE</th><th scope="col">TIME</th><th scope="col">AVG. HEART RATE</th><th scope="col">AVG. PACE</th><th scope="col">SOURCE</th></tr></thead>
+              <thead><tr><th scope="col">ACTIVITY</th><th scope="col">DATE</th><th scope="col">DISTANCE</th><th scope="col">TIME</th><th scope="col">AVG. HEART RATE</th><th scope="col">AVG. PACE</th><th scope="col">SOURCE</th><th scope="col" class="actions-heading">ACTIONS</th></tr></thead>
               <tbody>@for (activity of result.items; track activity.id) {
                 <tr>
                   <td class="activity-cell"><span class="activity-icon" [class.cycle-icon]="activity.activityType === 'cycling'" [class.cardio-icon]="activity.activityType === 'indoor_cardio'">
@@ -50,19 +75,30 @@
                     } @else if (activity.activityType === 'indoor_cardio') { <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12h4l2.2-5 4.1 10 2.1-5H21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     } @else { <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 3 5 14h6l-1 7 9-12h-6l1-6Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> }
                   </span><span class="activity-names"><a class="activity-title-link" [routerLink]="['/activities', activity.id]">{{ activityLabel(activity) }}</a><small>{{ activity.activityType || 'Activity' }}</small></span></td>
-                  <td class="date-cell">{{ activity.startedAt ? (activity.startedAt | date:'d MMM yyyy') : 'Date unavailable' }}<small>{{ activity.startedAt ? (activity.startedAt | date:'HH:mm') : '' }}</small></td>
+                  <td class="date-cell">{{ activity.startedAt ? (activity.startedAt | date:'EEE, d MMM yyyy') : 'Date unavailable' }}<small>{{ activity.startedAt ? (activity.startedAt | date:'HH:mm') : '' }}</small></td>
                   <td class="numeric-cell">{{ formatDistance(activity.distanceMeters) }}</td><td class="numeric-cell">{{ formatDuration(activity.elapsedTimeSeconds) }}</td>
                   <td class="numeric-cell">@if (activity.averageHeartRateBpm !== null) { {{ activity.averageHeartRateBpm }} <small>bpm</small> } @else { <span class="muted-value">—</span> }</td>
                   <td class="numeric-cell">{{ formatPace(activity.averagePaceSecondsPerKilometer) }}</td><td><span class="source-badge" [class.fit-source]="activity.source === 'FIT'">{{ activity.source === 'FIT' ? 'FIT' : 'SUMMARY' }}</span></td>
+                  <td class="row-action-cell">
+                    @if (showingHidden()) {
+                      <button mat-icon-button type="button" [disabled]="updatingActivityId() === activity.id" [attr.aria-label]="'Restore ' + activityLabel(activity)" title="Restore activity" (click)="setActivityHidden(activity.id, false)">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.34-5.66L4 8.67M4 4v4.67h4.67M12 8v4l2.5 1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                    } @else {
+                      <button mat-icon-button type="button" [disabled]="updatingActivityId() === activity.id" [attr.aria-label]="'Hide ' + activityLabel(activity)" title="Hide activity" (click)="confirmHide(activity)">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M5.5 7l1 13h11l1-13M9 7V4h6v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                    }
+                  </td>
                 </tr>
               }</tbody>
             </table></div>
             <footer class="table-footer"><span>Showing <strong>{{ (result.page - 1) * result.pageSize + 1 }}–{{ Math.min(result.page * result.pageSize, result.totalCount) }}</strong> of {{ result.totalCount }}</span>
-              <div class="pagination"><button type="button" aria-label="Previous page" [disabled]="result.page <= 1" (click)="goToPage(result.page - 1)"><svg viewBox="0 0 16 16" fill="none"><path d="m10 3-5 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span>Page <strong>{{ result.page }}</strong> of {{ pageCount(result) }}</span><button type="button" aria-label="Next page" [disabled]="result.page >= pageCount(result)" (click)="goToPage(result.page + 1)"><svg viewBox="0 0 16 16" fill="none"><path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+              <div class="pagination"><button mat-icon-button type="button" aria-label="Previous page" [disabled]="result.page <= 1" (click)="goToPage(result.page - 1)"><svg viewBox="0 0 16 16" fill="none"><path d="m10 3-5 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span>Page <strong>{{ result.page }}</strong> of {{ pageCount(result) }}</span><button mat-icon-button type="button" aria-label="Next page" [disabled]="result.page >= pageCount(result)" (click)="goToPage(result.page + 1)"><svg viewBox="0 0 16 16" fill="none"><path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
             </footer>
           }
         }
-      </section>
+      </mat-card>
       <p class="privacy-note"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.4" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Your activity data is read from a database on this device.</p>
     </section>
   </main>

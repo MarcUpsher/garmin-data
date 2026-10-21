@@ -1,115 +1,127 @@
-# Garmin activity library
+# Garmin Data
 
-A local-first activity browser and importer for Garmin data. The product name is still open.
+A local-first activity library and training-history explorer for Garmin data. The project is being
+built around a simple idea: keep your own activity data on your computer, make it easy to inspect,
+and make long-term trends more useful than the summaries offered by Garmin Connect. The product
+name is still open.
 
-## Repository layout
+## What it does today
 
-- `apps/Garmin.Api` — local, read-only HTTP API
-- `apps/web` — Angular activity browser
-- `src/Garmin.Data` — EF Core model, migrations, and SQLite access
-- `tools/Garmin.Import` — FIT and Garmin Connect CSV import CLI
-- `Garmin.sln` — .NET solution
+- Imports FIT activities from a Garmin watch mounted over USB, Garmin Connect export archives, or a
+  Garmin Connect activity CSV.
+- Stores activity summaries, laps, timestamped FIT samples and import source evidence in SQLite.
+- Browses, filters and hides activities; individual activities open in a side panel with laps and
+  a synchronized heart-rate, pace and elevation chart.
+- Shows running consistency over monthly or weekly periods, including zero-activity periods.
+- Calculates cached best rolling 1, 2, 5, 6 and 10 km running efforts from FIT samples, with links
+  back to the activity. These are observed training efforts, not assumed race results or
+  standardized course performances.
 
-This is a lightweight monorepo using Angular CLI for the frontend and .NET solution tooling for
-the backend. Nx is not included yet.
+The direct Garmin Bluetooth transport is still research work and is not part of the application
+sync flow. USB sync currently reads FIT files after Linux mounts the watch as storage. Other Garmin
+export families such as sleep, daily wellness and historical VO₂ max are not imported yet.
 
-## Run the first vertical slice
+## Project layout
 
-Start the API in one terminal:
+This is a small monorepo. The frontend and backend are separate applications in one Git repository;
+Nx is not currently used.
+
+| Path | Purpose |
+| --- | --- |
+| `apps/web` | Angular and Angular Material user interface |
+| `apps/Garmin.Api` | Local ASP.NET Core API and watch-sync endpoint |
+| `src/Garmin.Data` | SQLite entities, EF Core context, migrations and import logic |
+| `tools/Garmin.Import` | Command-line tools for FIT, CSV and Garmin Connect exports |
+| `Garmin.sln` | .NET solution |
+
+## Run locally on Linux
+
+### Requirements
+
+- .NET 10 SDK
+- Node.js 22.22.3 or later in the 22.x line, or 24.15.0 or later in the 24.x line, and npm
+
+Install the frontend dependencies once:
+
+```sh
+npm ci --prefix apps/web
+```
+
+Run the API and frontend in separate terminals from the repository root:
 
 ```sh
 dotnet run --project apps/Garmin.Api
 ```
 
-Start the Angular app in another:
-
 ```sh
 npm start --prefix apps/web
 ```
 
-Open `http://localhost:4200`. The API listens on `127.0.0.1:5080`, reads
-`~/.local/share/garmin-data/activities.db`, and applies EF migrations on startup. Angular proxies
-`/api` requests to the local API. `GET /api/activities` returns a paged summary list and accepts
-`page`, `pageSize` (1–100), and an exact `type` filter. `GET /api/health` is a local health check.
-
-With the watch connected over USB and its storage mounted, use **Sync watch** in the top bar. The
-API searches standard Linux removable-media locations (including the user GVFS mount) for
-`GARMIN/Activity`, imports new FIT files into the same database, skips files already imported by
-content hash, and refreshes the activity list. If the watch does not appear as a mounted file
-system, open it in the file manager and choose file transfer mode if prompted; USB device access
-and mounting are handled by Linux, not by the app. The app records each imported device path,
-file size, and modification time so later syncs can skip unchanged FIT contents. New or changed
-files are still hashed and checked against existing activities, and unchanged files are rehashed
-after 30 days as a periodic integrity check.
-
-## Catalog FIT files in a Garmin export
-
-To inspect the FIT archive contents without importing them or extracting the archives:
-
-~~~sh
-dotnet run --project tools/Garmin.Import -- catalog-fit "/path/to/DI-Connect-Uploaded-Files" --output "/path/to/garmin-fit-catalog.csv"
-~~~
-
-The cataloger processes one entry at a time, writes each entry to CSV with a SHA-256 digest, embedded FIT file type, and session/lap/record message counts, and deletes its temporary working file. It does not open or modify the application database. The CSV can contain private archive entry names; keep it with the local export.
-
-## Import activities
-
-By default, imports use `~/.local/share/garmin-data/activities.db`, the same database the API reads.
-To rebuild canonical activities from a full Garmin Connect export, first generate the FIT catalog and
-then import into a fresh database:
-
-~~~sh
-dotnet run --project tools/Garmin.Import -- catalog-fit "/path/to/DI_CONNECT/DI-Connect-Uploaded-Files"
-dotnet run --project tools/Garmin.Import -- import-garmin-export "/path/to/DI_CONNECT" \
-  --database "/path/to/activities.rebuilt.db" \
-  --supplement-database "/path/to/existing/activities.db"
-~~~
-
-The export importer creates one activity per Garmin summary, links matching FIT data by exact UTC
-session start time, and keeps both summary JSON and FIT payloads as source evidence. It imports
-Activity FITs only; monitoring, sleep, daily wellness, VO2 Max, training history, and other export
-families still need their own data models and importers. Use a new database path for a rebuild and
-review the reported counts before replacing an existing database. The optional supplement database
-preserves existing FIT payloads absent from the Connect ZIP export when an exact summary match exists.
-
-To import a Garmin Connect activity CSV:
+Open <http://localhost:4200>. The Angular development server forwards `/api` requests to the API at
+`http://127.0.0.1:5080`. On startup, the API applies pending EF Core migrations and uses
+`~/.local/share/garmin-data/activities.db` by default. Set `GARMIN_DB_PATH` to use another database:
 
 ```sh
-dotnet run --project tools/Garmin.Import -- ~/Downloads/Activities.csv
+GARMIN_DB_PATH=/path/to/activities.db dotnet run --project apps/Garmin.Api
 ```
 
-To import FIT files from a directory or mounted watch:
+The database is local application data and is not part of the repository. Treat Garmin export
+archives, catalog files and database backups as private personal data.
+
+### Sync a watch over USB
+
+Connect the watch, choose file-transfer mode if prompted, and wait for Linux to mount it. Then click
+**Sync watch** in the application. The API looks for `GARMIN/Activity` in common removable-media and
+GVFS mount locations, imports new FIT files, and skips unchanged files using the local device file
+index and content hashes. The importer does not mount USB devices itself; the operating system must
+make the watch files available first.
+
+### Update cached performance efforts
+
+Open **Trends → Performance** and click **Update efforts** to calculate or rebuild cached running
+efforts for existing activities. New FIT files receive calculated efforts during import. The
+algorithm version is stored with the results so they can be rebuilt when the calculation changes.
+
+## Import data from the command line
+
+All commands below run from the repository root. Imports use the same default SQLite database as
+the API unless `--database` is supplied.
+
+Import a Garmin Connect activity CSV (summary values only; no record samples or lap splits):
 
 ```sh
-dotnet run --project tools/Garmin.Import -- /run/media/$USER/GARMIN
+dotnet run --project tools/Garmin.Import -- /path/to/Activities.csv
 ```
 
-The importer finds `.fit` files recursively and supports `GARMIN/Activity`. Linux must mount the
-watch as a filesystem; automatic device detection/mounting is not implemented. Both import paths
-run EF migrations and skip already imported source records by SHA-256. CSV rows are labeled
-`GarminConnectCsv`, store their timezone-unspecified dates as local wall-clock values, and retain
-the row values as JSON in `ActivitySourceFiles`. Standalone CSV and watch-folder imports remain separate source records; the full-export command above links summaries and FIT data by exact UTC
-start time. CSVs provide summaries, not time-series samples or individual lap splits.
-
-Use `--database /path/to/file.db` to select another database for an import or for the API via the
-`GARMIN_DB_PATH` environment variable.
-
-## EF Core migrations
-
-The local `dotnet-ef` tool version is pinned in `dotnet-tools.json`. From the repository root:
+Import FIT files from a directory or mounted watch:
 
 ```sh
-dotnet tool restore
-dotnet tool run dotnet-ef migrations add <Name> \
-  --project src/Garmin.Data/Garmin.Data.csproj \
-  --startup-project src/Garmin.Data/Garmin.Data.csproj
+dotnet run --project tools/Garmin.Import -- /path/to/GARMIN
 ```
 
-The importer and API apply migrations on startup. Timestamps from FIT are normalized to UTC. CSV
-dates have no timezone metadata and remain separate local wall-clock values. The schema includes
-optional laps, common record samples, summary metrics, and retained source payloads.
+Catalog FIT files in Garmin Connect ZIP archives without extracting all of them to disk:
 
-## Build and verify
+```sh
+dotnet run --project tools/Garmin.Import -- catalog-fit \
+  /path/to/DI_CONNECT/DI-Connect-Uploaded-Files \
+  --output /path/to/garmin-fit-catalog.csv
+```
+
+Rebuild activities from a full Garmin Connect export. Use a new database path first, inspect the
+reported counts, and only then decide whether to replace an existing database:
+
+```sh
+dotnet run --project tools/Garmin.Import -- import-garmin-export /path/to/DI_CONNECT \
+  --database /path/to/activities.rebuilt.db \
+  --supplement-database /path/to/existing/activities.db
+```
+
+The export importer creates one activity per Garmin summary and links matching FIT files by exact
+UTC start time. Summary JSON and FIT payloads are retained as source evidence. The optional
+supplement database preserves existing FIT payloads that are absent from the Connect export when an
+exact summary match exists.
+
+## Build and test
 
 ```sh
 dotnet build apps/Garmin.Api/Garmin.Api.csproj
@@ -118,6 +130,26 @@ npm run build --prefix apps/web
 npm test --prefix apps/web
 ```
 
-The importer was verified against the sample archive (163 FIT files, 103,965 record samples, 509
-lap summaries) and the Garmin Connect CSV export (753 summary rows). The local SQLite database and
-all activity exports are excluded from Git.
+EF Core migrations are in `src/Garmin.Data/Data/Migrations`. The pinned `dotnet-ef` tool can be
+restored with `dotnet tool restore`. Create a migration from the repository root with:
+
+```sh
+dotnet tool run dotnet-ef migrations add <Name> \
+  --project src/Garmin.Data/Garmin.Data.csproj \
+  --startup-project apps/Garmin.Api/Garmin.Api.csproj
+```
+
+## Packaging and Docker
+
+The two-process development setup above is the current runnable form, not the intended final Linux
+desktop experience. A later packaging step could bundle the Angular UI and launch the local API from
+a desktop shell, or provide a simple native launcher. That would keep database access and mounted
+watch discovery close to Linux and avoid requiring users to manage terminals.
+
+Docker may still be useful as an optional reproducible development or headless/server deployment.
+It is not implemented yet, and it is unlikely to be the best default for the desktop app: USB sync
+needs access to the host's mounted watch path and file permissions, while future Bluetooth work
+would need access to the host Bluetooth service and adapter. Containerizing those integrations is
+possible, but adds host-device and mount configuration. The practical direction is to keep the
+application runnable directly on Linux, then add Docker only if a concrete development or remote
+deployment use case warrants it.

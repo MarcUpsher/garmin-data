@@ -78,6 +78,9 @@ namespace Garmin.Data.Data.Migrations
                     b.Property<bool?>("IsFavorite")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("LapCount")
                         .HasColumnType("INTEGER");
 
@@ -240,6 +243,46 @@ namespace Garmin.Data.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("ActivityLaps");
+                });
+
+            modelBuilder.Entity("Garmin.Data.Entities.ActivityPerformanceEffort", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ActivityId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AlgorithmVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DistanceMeters")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("DurationSeconds")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("EffortKind")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("EndElapsedSeconds")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("ObservationCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("StartElapsedSeconds")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityId", "DistanceMeters")
+                        .IsUnique();
+
+                    b.ToTable("ActivityPerformanceEfforts");
                 });
 
             modelBuilder.Entity("Garmin.Data.Entities.ActivityRecord", b =>
@@ -417,6 +460,17 @@ namespace Garmin.Data.Data.Migrations
                     b.Navigation("Activity");
                 });
 
+            modelBuilder.Entity("Garmin.Data.Entities.ActivityPerformanceEffort", b =>
+                {
+                    b.HasOne("Garmin.Data.Entities.Activity", "Activity")
+                        .WithMany("PerformanceEfforts")
+                        .HasForeignKey("ActivityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Activity");
+                });
+
             modelBuilder.Entity("Garmin.Data.Entities.ActivityRecord", b =>
                 {
                     b.HasOne("Garmin.Data.Entities.Activity", "Activity")
@@ -468,6 +522,8 @@ namespace Garmin.Data.Data.Migrations
                     b.Navigation("ImportedDeviceFiles");
 
                     b.Navigation("Laps");
+
+                    b.Navigation("PerformanceEfforts");
 
                     b.Navigation("Records");
 

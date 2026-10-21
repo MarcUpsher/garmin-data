@@ -8,6 +8,7 @@ public sealed class GarminDbContext(DbContextOptions<GarminDbContext> options) :
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<ActivityLap> ActivityLaps => Set<ActivityLap>();
     public DbSet<ActivityRecord> ActivityRecords => Set<ActivityRecord>();
+    public DbSet<ActivityPerformanceEffort> ActivityPerformanceEfforts => Set<ActivityPerformanceEffort>();
     public DbSet<ActivityExtraField> ActivityExtraFields => Set<ActivityExtraField>();
     public DbSet<ActivitySourceFile> ActivitySourceFiles => Set<ActivitySourceFile>();
     public DbSet<ImportedDeviceFile> ImportedDeviceFiles => Set<ImportedDeviceFile>();
@@ -76,6 +77,15 @@ public sealed class GarminDbContext(DbContextOptions<GarminDbContext> options) :
             entity.HasIndex(x => new { x.ActivityId, x.RecordNumber }).IsUnique();
             entity.HasIndex(x => new { x.ActivityId, x.TimestampUtc });
             entity.HasOne(x => x.Activity).WithMany(x => x.Records)
+                .HasForeignKey(x => x.ActivityId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ActivityPerformanceEffort>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.ActivityId, x.DistanceMeters }).IsUnique();
+            entity.Property(x => x.EffortKind).HasMaxLength(24).IsRequired();
+            entity.HasOne(x => x.Activity).WithMany(x => x.PerformanceEfforts)
                 .HasForeignKey(x => x.ActivityId).OnDelete(DeleteBehavior.Cascade);
         });
 

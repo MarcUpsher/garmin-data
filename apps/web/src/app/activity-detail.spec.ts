@@ -13,7 +13,7 @@ describe('ActivityDetail', () => {
     }).compileComponents();
   });
 
-  it('shows lap metrics, totals, and aligned chart series', async () => {
+  it('shows lap metrics, totals, and aligned run-profile series', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/activities/42', ActivityDetail);
     const http = TestBed.inject(HttpTestingController);
@@ -30,8 +30,8 @@ describe('ActivityDetail', () => {
         timerTimeSeconds: 298, distanceMeters: 1000, averageHeartRateBpm: 150, maximumHeartRateBpm: 170,
         averageSpeedMetersPerSecond: 3.33, maximumSpeedMetersPerSecond: 4 }],
       records: [
-        { timestampUtc: '2026-10-18T09:00:00Z', distanceMeters: 0, speedMetersPerSecond: 3.2, heartRateBpm: 140, altitudeMeters: 25 },
-        { timestampUtc: '2026-10-18T09:00:10Z', distanceMeters: 32, speedMetersPerSecond: 4, heartRateBpm: 150, altitudeMeters: 26 },
+        { recordNumber: 0, timestampUtc: '2026-10-18T09:00:00Z', distanceMeters: 0, speedMetersPerSecond: 3.2, heartRateBpm: 140, altitudeMeters: 25 },
+        { recordNumber: 1, timestampUtc: '2026-10-18T09:00:10Z', distanceMeters: 32, speedMetersPerSecond: 4, heartRateBpm: 150, altitudeMeters: 26 },
       ],
     });
     await harness.fixture.whenStable();
@@ -42,7 +42,9 @@ describe('ActivityDetail', () => {
     expect(page.querySelector('.lap-table tbody')?.textContent).toContain('5:00 /km');
     expect(page.querySelector('.lap-table tbody')?.textContent).toContain('4:10 /km');
     expect(page.querySelector('.totals-grid')?.textContent).toContain('Max heart rate176 bpm');
-    expect(page.querySelectorAll('.activity-chart polyline').length).toBe(3);
+    expect(page.querySelectorAll('.activity-chart .chart-line').length).toBe(2);
+    expect(page.querySelector('.activity-chart .elevation-area')).not.toBeNull();
+    expect(page.querySelector('.axis-toggle')?.textContent).toContain('Distance');
     http.verify();
   });
 

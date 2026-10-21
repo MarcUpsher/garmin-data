@@ -80,6 +80,8 @@ public static class FitDirectoryImporter
                 }
 
                 var activity = FitActivityDecoder.Decode(file, bytes, hash);
+                foreach (var effort in PerformanceEffortCalculator.Calculate(activity))
+                    activity.PerformanceEfforts.Add(effort);
                 db.Activities.Add(activity);
                 var fileIndex = UpsertFileIndex(db, indexed, indexedFiles, deviceKey, relativePath,
                     fileSize, lastModified, 0, activity);

@@ -1,0 +1,157 @@
+<div class="trends-page">
+  <header class="trends-topbar">
+    <div class="breadcrumbs"><span>Library</span><span>/</span><strong>Trends</strong></div>
+    <span class="local-status"><i></i>Local database</span>
+  </header>
+
+  <main class="trends-content">
+    <div class="page-heading">
+      <div><p class="eyebrow">YOUR TRAINING HISTORY</p><h1>Running Trends</h1><p class="subtitle">See when you ran, stopped, and found your rhythm again.</p></div>
+    </div>
+
+    <div class="view-tabs" role="tablist" aria-label="Running trends view">
+      <button type="button" role="tab" [attr.aria-selected]="activeView() === 'consistency'" [class.selected]="activeView() === 'consistency'" (click)="selectView('consistency')">Consistency</button>
+      <button type="button" role="tab" [attr.aria-selected]="activeView() === 'performance'" [class.selected]="activeView() === 'performance'" (click)="selectView('performance')">Performance</button>
+    </div>
+
+    @if (activeView() === 'consistency') {
+    <section class="trend-section" aria-labelledby="consistency-title">
+      <div class="section-intro"><div><p class="section-kicker">CONSISTENCY</p><h2 id="consistency-title">How much are you running?</h2><p>Monthly distance includes zero-activity periods. The 6-month and 1-year ranges are rolling, so edge months may be partial.</p></div></div>
+
+      <div class="trend-controls">
+        <div class="control-group" role="group" aria-label="Date range">
+          <button type="button" [class.selected]="period() === '6m'" (click)="selectPeriod('6m')">6 months</button>
+          <button type="button" [class.selected]="period() === '1y'" (click)="selectPeriod('1y')">1 year</button>
+          <button type="button" [class.selected]="period() === 'all'" (click)="selectPeriod('all')">All time</button>
+        </div>
+        <div class="control-group aggregation" role="group" aria-label="Distance aggregation">
+          <button type="button" [class.selected]="bucketSize() === 'month'" (click)="selectBucketSize('month')">Monthly</button>
+          <button type="button" [class.selected]="bucketSize() === 'week'" [disabled]="period() !== '6m'" (click)="selectBucketSize('week')">Weekly</button>
+        </div>
+      </div>
+
+      @if (error()) {
+        <div class="trend-state error" role="alert">{{ error() }} <button type="button" (click)="load()">Retry</button></div>
+      } @else if (loading()) {
+        <div class="trend-state" aria-live="polite">Loading running history…</div>
+      } @else if (response(); as result) {
+        <div class="chart-card">
+          <div class="chart-summary">
+            <div><span class="chart-summary-label">{{ bucketSize() === 'month' ? 'DISTANCE PER MONTH' : 'DISTANCE PER WEEK' }}</span><strong>Distance</strong></div>
+            @if (hoveredBucket(); as hovered) {
+              <div class="hover-summary" aria-live="polite"><span>{{ hovered.label }}</span><strong>{{ hovered.distanceKm | number:'1.1-1' }} km</strong><small>{{ hovered.runCount }} {{ hovered.runCount === 1 ? 'run' : 'runs' }} · {{ formatDuration(hovered.totalTimerTimeSeconds) }} timer time</small></div>
+            } @else { <span class="chart-instruction">Hover a bar for details · select it to inspect the runs</span> }
+          </div>
+          <div class="chart-scroll">
+            <svg class="consistency-chart" viewBox="0 0 1000 350" preserveAspectRatio="none" role="img" [attr.aria-label]="'Running distance ' + (bucketSize() === 'month' ? 'by month' : 'by week')">
+              <g class="grid-lines">@for (tick of chart().ticks; track $index) {
+                <line x1="70" x2="990" [attr.y1]="tick.y" [attr.y2]="tick.y" />
+                <text x="60" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
+              }</g>
+              <text class="axis-title" x="16" y="20">km</text>
+              @for (bar of chart().bars; track bar.startDate + bar.endDate; let index = $index) {
+                <rect class="bar-hit-area" [attr.x]="bar.slotX" y="24" [attr.width]="bar.slotWidth" height="264" tabindex="0" role="button"
+                  [attr.aria-label]="'Select ' + bar.label + ': ' + (bar.distanceKm | number:'1.1-1') + ' kilometres, ' + bar.runCount + ' runs, ' + formatDuration(bar.totalTimerTimeSeconds)"
+                  [class.bar-selected]="selectedBucket()?.startDate === bar.startDate && selectedBucket()?.endDate === bar.endDate"
+                  (pointerenter)="hover(index)" (pointerleave)="hover(null)" (focus)="hover(index)" (blur)="hover(null)" (click)="chooseBucket(bar)" (keydown)="chooseBucketByKey($event, bar)" />
+                <rect class="distance-bar" [attr.x]="bar.x" [attr.y]="bar.y" [attr.width]="bar.width" [attr.height]="bar.height"
+                  [class.zero-bar]="bar.distanceKm === 0" [class.bar-selected]="selectedBucket()?.startDate === bar.startDate && selectedBucket()?.endDate === bar.endDate" />
+                @if (bar.axisLabel) { <text class="period-label" [attr.x]="bar.x + bar.width / 2" y="318" text-anchor="middle">{{ bar.axisLabel }}</text> }
+              }
+            </svg>
+          </div>
+          <div class="chart-footer"><span>Distance (km)</span><span>Run time uses FIT timer time, falling back to elapsed time where needed.</span></div>
+        </div>
+
+        @if (selectedBucket(); as selected) {
+          <div class="activity-breakdown" aria-live="polite">
+            <div class="breakdown-heading"><div><p class="section-kicker">PERIOD DETAIL</p><h3>{{ selected.label }}</h3></div><span>{{ selected.distanceKm | number:'1.1-1' }} km · {{ selected.runCount }} {{ selected.runCount === 1 ? 'run' : 'runs' }}</span></div>
+            @if (activitiesLoading()) { <p class="breakdown-state">Loading runs…</p> }
+            @else if (activities().length === 0) { <p class="breakdown-state">No running activities were recorded in this period.</p> }
+            @else {
+              <div class="activity-list">@for (activity of activities(); track activity.id) {
+                <a class="activity-row" [routerLink]="['/activities', activity.id]">
+                  <span class="activity-date">{{ activity.startedAt ? (activity.startedAt | date:'EEE, d MMM yyyy') : 'Date unavailable' }}<small>{{ activity.startedAt ? (activity.startedAt | date:'HH:mm') : '' }}</small></span>
+                  <strong class="activity-name">{{ activityLabel(activity) }}</strong>
+                  <span>{{ formatDistance(activity.distanceMeters) }}</span>
+                  <span>{{ formatDuration(activity.movingTimeSeconds ?? activity.elapsedTimeSeconds) }}</span>
+                  <span>{{ formatPace(activity.averagePaceSecondsPerKilometer) }}</span>
+                  <span class="open-mark" aria-hidden="true">↗</span>
+                </a>
+              }</div>
+            }
+          </div>
+        }
+      }
+    </section>
+    } @else {
+      <section class="trend-section" aria-labelledby="performance-title">
+        <div class="section-intro"><div><p class="section-kicker">PERFORMANCE</p><h2 id="performance-title">How fast have you run?</h2><p>Best supported effort per activity. Rolling segments require at least five FIT samples; distance plateaus, gaps over ten seconds and implausible distance jumps split a segment. This accommodates the Forerunner's variable record cadence. The end is interpolated to the exact distance. Without usable samples, a recorded activity time is included only if its full distance is within 0.1% of the target; its recorded time is left unchanged. Terrain is not corrected, so treat these as observed efforts, not standardized race results.</p></div></div>
+
+        <div class="performance-controls">
+          <div class="control-group" role="group" aria-label="Distance">
+            @for (distance of [1000, 2000, 5000, 6000, 10000]; track distance) {
+              <button type="button" [class.selected]="performanceDistance() === distance" (click)="selectPerformanceDistance(distance)">{{ distance / 1000 }} km</button>
+            }
+          </div>
+          <div class="control-group" role="group" aria-label="Date range">
+            <button type="button" [class.selected]="period() === '6m'" (click)="selectPeriod('6m')">6 months</button>
+            <button type="button" [class.selected]="period() === '1y'" (click)="selectPeriod('1y')">1 year</button>
+            <button type="button" [class.selected]="period() === 'all'" (click)="selectPeriod('all')">All time</button>
+          </div>
+          <button class="update-efforts" type="button" [disabled]="rebuilding()" (click)="rebuildPerformance()">{{ rebuilding() ? 'Updating…' : 'Update efforts' }}</button>
+        </div>
+
+        @if (rebuildMessage()) { <p class="rebuild-message" role="status">{{ rebuildMessage() }}</p> }
+        @if (performanceError()) {
+          <div class="trend-state error" role="alert">{{ performanceError() }} <button type="button" (click)="loadPerformance()">Retry</button></div>
+        } @else if (performanceLoading()) {
+          <div class="trend-state" aria-live="polite">Loading performance efforts…</div>
+        } @else if (performance(); as result) {
+          @if (result.points.length === 0) {
+            <div class="trend-state no-efforts"><div><strong>No cached efforts for this range yet.</strong><p>Update efforts to calculate rolling times from the FIT record samples in your database. Activities without sufficiently dense timestamp and distance data are skipped.</p></div></div>
+          } @else {
+            <div class="chart-card performance-card">
+              <div class="chart-summary">
+                <div><span class="chart-summary-label">BEST ROLLING EFFORT PER RUN</span><strong>{{ performanceDistance() / 1000 }} km · {{ result.points.length }} {{ result.points.length === 1 ? 'activity' : 'activities' }}</strong></div>
+                <span class="chart-instruction">Faster efforts appear higher · click a point to open its activity</span>
+              </div>
+              <div class="chart-scroll">
+                <svg class="performance-chart" viewBox="0 0 1000 350" preserveAspectRatio="none" role="img" [attr.aria-label]="'Running pace for ' + (performanceDistance() / 1000) + ' kilometre efforts over time'">
+                  <g class="grid-lines">@for (tick of performanceChart().ticks; track $index) {
+                    <line x1="82" x2="990" [attr.y1]="tick.y" [attr.y2]="tick.y" />
+                    <text x="72" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
+                  }</g>
+                  <text class="axis-title" x="16" y="20">min/km</text>
+                  @for (tick of performanceChart().dateTicks; track $index) {
+                    <line class="date-tick" [attr.x1]="tick.x" [attr.x2]="tick.x" y1="288" y2="293" />
+                    <text class="period-label" [attr.x]="tick.x" y="315" text-anchor="middle">{{ tick.label }}</text>
+                  }
+                  @for (point of performanceChart().points; track point.activityId) {
+                    <a href="#activity" (click)="$event.preventDefault(); openActivity(point.activityId)" [attr.aria-label]="(point.title || 'Run') + ', ' + (point.startedAt | date:'d MMM yyyy') + ', ' + formatDuration(point.durationSeconds) + (point.isPersonalBest ? ', personal best' : '')">
+                      <title>{{ point.startedAt | date:'d MMM yyyy' }} · {{ formatDuration(point.durationSeconds) }} total · {{ formatPace(point.durationSeconds * 1000 / point.distanceMeters) }} · {{ point.effortKind === 'RollingSegment' ? 'rolling segment' : 'recorded activity time' }}{{ point.isPersonalBest ? ' · best so far' : '' }}{{ point.observationCount > 0 ? ' · ' + point.observationCount + ' samples' : '' }}</title>
+                      <circle class="effort-hit" [attr.cx]="point.x" [attr.cy]="point.y" r="11" />
+                      <circle class="effort-point" [class.personal-best]="point.isPersonalBest" [attr.cx]="point.x" [attr.cy]="point.y" r="5" />
+                    </a>
+                  }
+                </svg>
+              </div>
+              <div class="chart-footer"><span>Activity date</span><span>Gold marks a new best observed effort so far. Not an official race result.</span></div>
+            </div>
+            <div class="effort-list">@for (point of result.points; track point.activityId) {
+              <a class="effort-row" href="#activity" (click)="$event.preventDefault(); openActivity(point.activityId)">
+                <span>{{ point.startedAt | date:'EEE, d MMM yyyy' }}</span>
+                <strong>{{ point.title || 'Run' }}</strong>
+                <span>{{ formatDuration(point.durationSeconds) }}<small>{{ formatPace(point.durationSeconds * 1000 / point.distanceMeters) }}</small></span>
+                <span>{{ point.isPersonalBest ? '★ New best' : (point.effortKind === 'RollingSegment' ? 'Rolling effort' : 'Recorded result') }}</span>
+              </a>
+            }</div>
+          }
+        }
+      </section>
+    }
+    @if (selectedActivityId(); as activityId) {
+      <app-activity-detail [activityId]="activityId" [drawerMode]="true" returnLabel="Trends" (closed)="closeActivity()" />
+    }
+  </main>
+</div>
