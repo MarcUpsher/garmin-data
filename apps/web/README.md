@@ -1,59 +1,37 @@
-# GarminWeb
+# Garmin frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.3.
+Angular and Angular Material UI, served by the .NET API in the production Docker image.
+Use the [project README](../../README.md) for everyday startup or the
+[development guide](../../docs/development.md) for running the API and Angular dev server separately.
 
-## Development server
+## Source layout
 
-To start a local development server, run:
+- `src/main.ts` bootstraps the application shell.
+- `src/app/app.config.ts` configures HTTP and routing.
+- `src/app/app.routes.ts` declares page and drawer routes.
+- `src/app/shell/` owns the sidebar, navigation and application-wide theme scope.
+- `src/app/activities/` owns the list, filters, USB sync controls, detail view and hide dialog.
+- `src/app/trends/` owns historical charts and their activity drill-down.
+- `src/app/data-management/` owns the export import page.
+- `src/app/shared/` contains the API client, API models, activity labels and theme preference.
+- `src/styles.scss` defines global Material styling and shared notification styles.
 
-```bash
-ng serve
+Component templates, styles and tests live beside their TypeScript files. Activities, Trends and
+Data & Imports render in the shell's router outlet. The activity list has its own child outlet for
+the drawer, so opening `/activities/:id` preserves the list and its filters. `/activity/:id` opens
+that activity as a dedicated page. Trends reuse the same detail component for their side panel.
+
+## Commands
+
+Run from the repository root:
+
+```sh
+npm ci --prefix apps/web
+npm start --prefix apps/web
+npm run build --prefix apps/web
+npm test --prefix apps/web -- --watch=false
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+The development server runs on port 4200 and proxies `/api` to port 5080. Browser code uses relative
+API URLs so the production UI and API can share one origin. Build output goes to `dist/garmin-web`,
+with browser assets in its `browser/` directory. Build output and installed dependencies stay out of Git.

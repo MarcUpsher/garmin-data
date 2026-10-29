@@ -116,4 +116,3 @@ export interface WellnessImportStatus {
   vo2MaxRecords: number; vo2FirstDate: string | null; vo2LastDate: string | null;
 }
 export interface SyncResult { imported: number; skipped: number; failed: number; recordCount: number; lapCount: number; filesScanned: number; filesHashed: number; errors: string[]; mount: string | null; }
-
