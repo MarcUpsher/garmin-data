@@ -10,6 +10,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatRadioModule } from '@angular/material/radio';
 import { ConfirmHideActivityDialog } from './confirm-hide-activity-dialog';
+import { activityTypeLabel } from './activity-type-label';
 
 @Component({ imports: [DatePipe, RouterLink, RouterOutlet, MatButtonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatSnackBarModule, MatDialogModule, MatRadioModule], selector: 'app-root', styleUrl: './app.scss', templateUrl: './app.html' })
 export class App implements OnInit {
@@ -140,7 +141,8 @@ export class App implements OnInit {
   }
   protected goToPage(page: number): void { this.pageNumber.set(page); this.load(); }
   protected pageCount(result: ActivityPage): number { return Math.max(1, Math.ceil(result.totalCount / result.pageSize)); }
-  protected activityLabel(activity: ActivityRow): string { return activity.title || activity.activityType || 'Activity'; }
+  protected activityLabel(activity: ActivityRow): string { return activity.title || activityTypeLabel(activity.activityType); }
+  protected activityTypeLabel = activityTypeLabel;
 
   protected formatDistance(meters: number | null): string {
     return meters === null ? '—' : `${(meters / 1000).toFixed(2)} km`;

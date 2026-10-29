@@ -31,6 +31,8 @@ public static class FitActivityDecoder
         // A small number of Garmin files contain multiple session messages for one recorded activity.
         // Keep the first session as the activity-level summary while retaining all laps and records.
         var session = sessions[0];
+        var sport = EnumValue(session.GetSport());
+        var subSport = EnumValue(session.GetSubSport());
         var activity = new GarminActivity
         {
             SourceKind = "FIT",
@@ -40,8 +42,9 @@ public static class FitActivityDecoder
             FileSizeBytes = sourceBytes.LongLength,
             ImportedAtUtc = System.DateTime.UtcNow,
             StartedAtUtc = AsUtc(session.GetStartTime()),
-            Sport = EnumValue(session.GetSport()),
-            SubSport = EnumValue(session.GetSubSport()),
+            Sport = sport,
+            SubSport = subSport,
+            ActivityType = FitActivityType.FromSport(sport, subSport),
             ElapsedTimeSeconds = Number(session.GetTotalElapsedTime()),
             TimerTimeSeconds = Number(session.GetTotalTimerTime()),
             DistanceMeters = Number(session.GetTotalDistance()),

@@ -14,7 +14,32 @@ try
     var options = new DbContextOptionsBuilder<GarminDbContext>()
         .UseSqlite($"Data Source={Path.Combine(temp, "checks.db")}").Options;
     await using var db = new GarminDbContext(options);
+    await db.Database.MigrateAsync("20261021204850_RepairWellnessImport");
+    db.Activities.AddRange(
+        new Activity { SourceKind = "FIT", SourceSha256 = "backfill-run", OriginalFileName = "run.fit", Sport = 1 },
+        new Activity { SourceKind = "FITArchive", SourceSha256 = "backfill-swim", OriginalFileName = "swim.fit", Sport = 5 },
+        new Activity { SourceKind = "GarminConnectExport", SourceSha256 = "keep-connect-type", OriginalFileName = "summary.json", Sport = 1, ActivityType = "cycling" },
+        new Activity { SourceKind = "FIT", SourceSha256 = "unknown-sport", OriginalFileName = "unknown.fit", Sport = 99 });
+    await db.SaveChangesAsync();
     await db.Database.MigrateAsync();
+    var backfilled = await db.Activities.AsNoTracking().ToDictionaryAsync(x => x.SourceSha256);
+    Check(backfilled["backfill-run"].ActivityType == "running"
+        && backfilled["backfill-swim"].ActivityType == "swimming"
+        && backfilled["keep-connect-type"].ActivityType == "cycling"
+        && backfilled["unknown-sport"].ActivityType is null,
+        "FIT type backfill repairs only known, empty FIT classifications");
+    await db.Activities.ExecuteDeleteAsync();
+    db.ChangeTracker.Clear();
+    Check(FitActivityType.FromSport(1, 0) == "running"
+        && FitActivityType.FromSport(2, 0) == "cycling"
+        && FitActivityType.FromSport(5, 0) == "swimming"
+        && FitActivityType.FromSport(10, 20) == "strength_training"
+        && FitActivityType.FromSport(10, 26) == "indoor_cardio"
+        && FitActivityType.FromSport(11, 30) == "casual_walking"
+        && FitActivityType.FromSport(11, 0) == "walking"
+        && FitActivityType.FromSport(10, 0) is null
+        && FitActivityType.FromSport(99, 0) is null,
+        "FIT sport and sub-sport codes map without guessing unknown types");
     var root = Path.Combine(temp, "DI_CONNECT");
     foreach (var folder in new[] { "DI-Connect-Wellness", "DI-Connect-Aggregator", "DI-Connect-Metrics" })
         Directory.CreateDirectory(Path.Combine(root, folder));
@@ -123,6 +148,22 @@ try
         "Failed USB index write does not poison the next file");
     await db.Database.ExecuteSqlRawAsync("DROP TRIGGER reject_first_index");
 
+    var newWatch = Path.Combine(temp, "new-watch"); Directory.CreateDirectory(newWatch);
+    var runFit = CreateFit(Dynastream.Fit.Sport.Running, Dynastream.Fit.SubSport.Generic);
+    var swimFit = CreateFit(Dynastream.Fit.Sport.Swimming, Dynastream.Fit.SubSport.Generic);
+    await File.WriteAllBytesAsync(Path.Combine(newWatch, "run.fit"), runFit);
+    await File.WriteAllBytesAsync(Path.Combine(newWatch, "swim.fit"), swimFit);
+    var newSync = await FitDirectoryImporter.ImportAsync(newWatch, db);
+    Check(newSync.Imported == 2 && newSync.Failed == 0
+        && await db.Activities.AnyAsync(x => x.SourceKind == "FIT" && x.ActivityType == "running")
+        && await db.Activities.AnyAsync(x => x.SourceKind == "FIT" && x.ActivityType == "swimming"),
+        "USB FIT imports classify sessions from their sport codes");
+    newSync = await FitDirectoryImporter.ImportAsync(newWatch, db);
+    Check(newSync.Imported == 0 && newSync.Skipped == 2,
+        "Repeated USB import keeps the existing classifications");
+    Check(FitActivityDecoder.Decode("archived.fit", runFit, "archive-test").ActivityType == "running",
+        "FIT archive decoding uses the same sport mapping");
+
     if (args.Length == 2)
     {
         var copy = Path.Combine(temp, "snapshot.db");
@@ -154,4 +195,21 @@ static void Check(bool condition, string description)
 {
     if (!condition) throw new InvalidOperationException(description);
     Console.WriteLine($"PASS {description}");
+}
+
+static byte[] CreateFit(Dynastream.Fit.Sport sport, Dynastream.Fit.SubSport subSport)
+{
+    using var stream = new MemoryStream();
+    var encoder = new Dynastream.Fit.Encode(Dynastream.Fit.ProtocolVersion.V20);
+    encoder.Open(stream);
+    var fileId = new Dynastream.Fit.FileIdMesg();
+    fileId.SetType(Dynastream.Fit.File.Activity);
+    fileId.SetManufacturer(Dynastream.Fit.Manufacturer.Development);
+    encoder.Write(fileId);
+    var session = new Dynastream.Fit.SessionMesg();
+    session.SetSport(sport);
+    session.SetSubSport(subSport);
+    encoder.Write(session);
+    encoder.Close();
+    return stream.ToArray();
 }

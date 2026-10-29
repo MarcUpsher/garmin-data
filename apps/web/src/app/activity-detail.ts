@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 import { ActivityDetailResponse, ActivitySample, ActivitySegmentSummary, ActivityService } from './activity.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { activityTypeLabel } from './activity-type-label';
 
 interface ChartPoint {
   recordNumber: number;
@@ -124,7 +125,7 @@ export class ActivityDetail implements OnInit, OnChanges, OnDestroy {
   }
   protected label(): string {
     const activity = this.data()?.activity;
-    return activity?.title || activity?.activityType || 'Activity';
+    return activity?.title || activityTypeLabel(activity?.activityType ?? null);
   }
   protected setAxis(mode: 'time' | 'distance'): void {
     if (mode === 'distance' && !this.chart().distanceAxisAvailable) return;
