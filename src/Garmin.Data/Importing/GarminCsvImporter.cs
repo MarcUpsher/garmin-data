@@ -6,7 +6,7 @@ using Garmin.Data;
 using Garmin.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Garmin.Importing;
+namespace Garmin.Data.Importing;
 
 public static class GarminCsvImporter
 {

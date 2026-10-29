@@ -1,6 +1,5 @@
 using Garmin.Data;
 using Garmin.Data.Importing;
-using Garmin.Importing;
 using Microsoft.EntityFrameworkCore;
 
 if (args.Length == 0 || args[0] is "--help" or "-h")
