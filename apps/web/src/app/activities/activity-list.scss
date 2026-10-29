@@ -1,167 +1,4 @@
-:host {
-  display: block;
-  min-height: 100vh;
-}
-
-.app-shell {
-  min-height: 100vh;
-  display: flex;
-  color: var(--mat-sys-on-surface);
-  background: var(--mat-sys-surface);
-}
-
-.sidebar {
-  width: 252px;
-  flex: 0 0 252px;
-  display: flex;
-  flex-direction: column;
-  padding: 28px 16px 18px;
-  border-right: 1px solid var(--mat-sys-outline-variant);
-  background: var(--mat-sys-surface-container-low);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 10px 52px;
-  color: var(--mat-sys-on-surface);
-  text-decoration: none;
-}
-
-.brand-mark {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  color: var(--mat-sys-on-primary-container);
-  background: var(--mat-sys-primary-container);
-}
-
-.brand-mark svg {
-  width: 27px;
-  height: 27px;
-}
-
-.brand-name {
-  font-size: 1.18rem;
-  font-weight: 650;
-  letter-spacing: -.035em;
-}
-
-.brand-name span {
-  color: var(--mat-sys-on-surface-variant);
-  font-weight: 400;
-}
-
-.nav-label {
-  margin: 0 12px 10px;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: .72rem;
-  font-weight: 650;
-  letter-spacing: .09em;
-}
-
-.primary-nav {
-  display: grid;
-  gap: 4px;
-}
-
-.nav-item {
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 14px;
-  border-radius: 24px;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: .92rem;
-  text-decoration: none;
-  transition: background-color .15s ease, color .15s ease;
-}
-
-.nav-item > svg {
-  width: 20px;
-  height: 20px;
-}
-
-.nav-item.active {
-  color: var(--mat-sys-on-secondary-container);
-  background: var(--mat-sys-secondary-container);
-  font-weight: 600;
-}
-
-.nav-count {
-  min-width: 28px;
-  margin-left: auto;
-  padding: 3px 8px;
-  border-radius: 16px;
-  color: var(--mat-sys-on-secondary-container);
-  background: color-mix(in srgb, var(--mat-sys-secondary-container) 72%, var(--mat-sys-on-secondary-container) 8%);
-  font-size: .78rem;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.nav-item.disabled {
-  opacity: .55;
-  cursor: default;
-}
-
-.soon {
-  margin-left: auto;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: .68rem;
-  letter-spacing: .05em;
-}
-
-.sidebar-spacer {
-  flex: 1;
-}
-
-.local-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 11px;
-  padding: 14px 12px;
-  border-radius: 16px;
-  color: var(--mat-sys-on-surface-variant);
-  background: var(--mat-sys-surface-container);
-}
-
-.local-indicator,
-.sync-dot {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  margin-top: 5px;
-  border-radius: 50%;
-  background: var(--mat-sys-tertiary);
-}
-
-.local-card strong,
-.local-card small {
-  display: block;
-}
-
-.local-card strong {
-  color: var(--mat-sys-on-surface);
-  font-size: .84rem;
-  font-weight: 600;
-}
-
-.local-card small {
-  margin-top: 4px;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: .76rem;
-}
-
-.sidebar-foot {
-  margin: 14px 4px 0;
-  color: var(--mat-sys-on-surface-variant);
-  font-size: .76rem;
-}
+:host { display: block; }
 
 .main-content {
   min-width: 0;
@@ -634,10 +471,6 @@ tbody tr:hover {
 }
 
 @media (max-width: 900px) {
-  .sidebar {
-    width: 208px;
-    flex-basis: 208px;
-  }
 
   .topbar {
     padding: 0 24px;
@@ -654,38 +487,11 @@ tbody tr:hover {
 }
 
 @media (max-width: 620px) {
-  .sidebar {
-    width: 64px;
-    flex-basis: 64px;
-    align-items: center;
-    padding: 20px 8px 12px;
-  }
 
-  .brand {
-    margin: 0 0 40px;
-  }
 
-  .brand-name,
-  .nav-label,
-  .nav-item span,
-  .local-card,
-  .sidebar-foot {
-    display: none;
-  }
 
-  .primary-nav {
-    width: 100%;
-  }
 
-  .nav-item {
-    justify-content: center;
-    padding: 0;
-  }
 
-  .nav-item > svg {
-    width: 21px;
-    height: 21px;
-  }
 
   .topbar {
     min-height: 60px;
@@ -756,3 +562,5 @@ tbody tr:hover {
     padding: 0 10px 0 16px;
   }
 }
+
+.sync-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--mat-sys-tertiary); }

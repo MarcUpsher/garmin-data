@@ -2,8 +2,9 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { RouterLink } from '@angular/router';
-import { ActivityDetail } from './activity-detail';
-import { ActivityRow, ActivityService, RunningConsistencyBucket, RunningConsistencyResponse, RunningPerformancePoint, RunningPerformanceResponse, SleepTrendPoint, SleepTrendResponse, Vo2TrendPoint, Vo2TrendResponse } from './activity.service';
+import { ActivityDetail } from '../activities/activity-detail';
+import { ActivityService } from '../shared/activity.service';
+import { ActivityRow, RunningConsistencyBucket, RunningConsistencyResponse, RunningPerformancePoint, RunningPerformanceResponse, SleepTrendPoint, SleepTrendResponse, Vo2TrendPoint, Vo2TrendResponse } from '../shared/activity.models';
 
 interface ChartBar extends RunningConsistencyBucket {
   x: number;

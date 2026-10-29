@@ -1,7 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivityPage, ActivityRow, ActivityService, SyncResult } from './activity.service';
-import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { ActivityService } from '../shared/activity.service';
+import { ActivityPage, ActivityRow, SyncResult } from '../shared/activity.models';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,12 +11,12 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatRadioModule } from '@angular/material/radio';
 import { ConfirmHideActivityDialog } from './confirm-hide-activity-dialog';
-import { activityTypeLabel } from './activity-type-label';
+import { activityTypeLabel } from '../shared/activity-type-label';
+import { ThemeService } from '../shared/theme.service';
 
-@Component({ imports: [DatePipe, RouterLink, RouterOutlet, MatButtonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatSnackBarModule, MatDialogModule, MatRadioModule], selector: 'app-root', styleUrl: './app.scss', templateUrl: './app.html' })
-export class App implements OnInit {
+@Component({ imports: [DatePipe, RouterLink, RouterOutlet, MatButtonModule, MatCardModule, MatFormFieldModule, MatSelectModule, MatSnackBarModule, MatDialogModule, MatRadioModule], selector: 'app-activity-list', styleUrl: './activity-list.scss', templateUrl: './activity-list.html' })
+export class ActivityList implements OnInit {
   private readonly service = inject(ActivityService);
-  private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   protected readonly page = signal<ActivityPage | null>(null);
@@ -27,24 +28,13 @@ export class App implements OnInit {
   protected readonly selectedDay = signal<number | ''>('');
   protected readonly showingHidden = signal(false);
   protected readonly updatingActivityId = signal<number | null>(null);
-  protected readonly darkTheme = signal(this.loadThemePreference());
-  protected readonly isTrends = signal(false);
-  protected readonly isData = signal(false);
+  private readonly theme = inject(ThemeService);
+  protected readonly darkTheme = this.theme.darkTheme;
   protected readonly pageNumber = signal(1);
   protected readonly pageSize = 25;
   protected readonly Math = Math;
 
-  ngOnInit(): void {
-    this.isTrends.set(this.router.url === '/trends');
-    this.isData.set(this.router.url === '/data');
-    this.router.events.subscribe(event => {
-      if (event instanceof NavigationEnd) {
-        this.isTrends.set(event.urlAfterRedirects === '/trends');
-        this.isData.set(event.urlAfterRedirects === '/data');
-      }
-    });
-    this.load();
-  }
+  ngOnInit(): void { this.load(); }
 
   protected load(): void {
     this.loading.set(true);
@@ -82,15 +72,7 @@ export class App implements OnInit {
     });
   }
 
-  protected toggleTheme(): void {
-    const nextTheme = !this.darkTheme();
-    this.darkTheme.set(nextTheme);
-    try { localStorage.setItem('garmin-theme', nextTheme ? 'dark' : 'light'); } catch { /* Preference remains available for this session. */ }
-  }
-
-  private loadThemePreference(): boolean {
-    try { return localStorage.getItem('garmin-theme') !== 'light'; } catch { return true; }
-  }
+  protected toggleTheme(): void { this.theme.toggle(); }
 
   private syncSummary(result: SyncResult): string {
     const imported = `${result.imported} new ${result.imported === 1 ? 'activity' : 'activities'}`;

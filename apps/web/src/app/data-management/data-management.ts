@@ -1,7 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ActivityService, WellnessImportResult, WellnessImportStatus } from './activity.service';
+import { ActivityService } from '../shared/activity.service';
+import { WellnessImportResult, WellnessImportStatus } from '../shared/activity.models';
 
 @Component({
   selector: 'app-data-management',

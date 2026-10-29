@@ -4,9 +4,10 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Subject } from 'rxjs';
-import { routes } from './app.routes';
+import { routes } from '../app.routes';
 import { ActivityDetail } from './activity-detail';
-import { ActivityService } from './activity.service';
+import { ActivityService } from '../shared/activity.service';
+
 
 describe('ActivityDetail', () => {
   beforeEach(async () => {
@@ -17,7 +18,7 @@ describe('ActivityDetail', () => {
 
   it('shows lap metrics, totals, and aligned run-profile series', async () => {
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/activities/42', ActivityDetail);
+    await harness.navigateByUrl('/activity/42', ActivityDetail);
     const http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/activities/42').flush({
       activity: {

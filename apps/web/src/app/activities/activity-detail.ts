@@ -2,10 +2,11 @@ import { DatePipe } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { ActivityDetailResponse, ActivitySample, ActivitySegmentSummary, ActivityService } from './activity.service';
+import { ActivityService } from '../shared/activity.service';
+import { ActivityDetailResponse, ActivitySample, ActivitySegmentSummary } from '../shared/activity.models';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { activityTypeLabel } from './activity-type-label';
+import { activityTypeLabel } from '../shared/activity-type-label';
 
 interface ChartPoint {
   recordNumber: number;

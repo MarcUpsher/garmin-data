@@ -2,27 +2,27 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { App } from './app';
-import { routes } from './app.routes';
+import { ActivityList } from './activity-list';
+import { routes } from '../app.routes';
 
-describe('App', () => {
+describe('ActivityList', () => {
   beforeEach(async () => {
     localStorage.removeItem('garmin-theme');
     await TestBed.configureTestingModule({
-      imports: [App],
+      imports: [ActivityList],
       providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
     })
       .compileComponents();
   });
 
   it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ActivityList);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
   });
 
   it('loads and displays the activity list', async () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ActivityList);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
     const activitiesRequest = http.expectOne((request) => request.url === '/api/activities');
@@ -36,11 +36,11 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('h1')?.textContent).toContain('Activities');
     expect(compiled.querySelector('.count-number')?.textContent).toContain('753');
-    expect(compiled.querySelector('.app-shell')?.classList.contains('dark-theme')).toBe(true);
+    expect((fixture.componentInstance as any).darkTheme()).toBe(true);
   });
 
   it('combines the selected weekday with the current activity type', async () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ActivityList);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
     http.expectOne((request) => request.url === '/api/activities').flush({
@@ -58,7 +58,7 @@ describe('App', () => {
   });
 
   it('loads hidden activities when the visibility filter is toggled', async () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ActivityList);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
     http.expectOne((request) => request.url === '/api/activities').flush({
@@ -76,7 +76,7 @@ describe('App', () => {
   });
 
   it('updates an activity visibility flag and reloads the list', async () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ActivityList);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
     http.expectOne((request) => request.url === '/api/activities').flush({
@@ -99,7 +99,7 @@ describe('App', () => {
   });
 
   it('toggles and remembers the light theme preference', async () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ActivityList);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
     http.expectOne((request) => request.url === '/api/activities').flush({
@@ -111,13 +111,13 @@ describe('App', () => {
     const themeButton = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.theme-toggle')!;
     themeButton.click();
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).querySelector('.app-shell')?.classList.contains('dark-theme')).toBe(false);
+    expect((fixture.componentInstance as any).darkTheme()).toBe(false);
     expect(localStorage.getItem('garmin-theme')).toBe('light');
     http.verify();
   });
 
   it('syncs the watch and reloads the activity list', async () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ActivityList);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
     http.expectOne((request) => request.url === '/api/activities').flush({

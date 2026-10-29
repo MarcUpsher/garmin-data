@@ -1,12 +1,4 @@
-:host {
-  position: fixed;
-  inset: 0 0 0 252px;
-  z-index: 5;
-  display: block;
-  overflow: auto;
-  color: var(--mat-sys-on-surface);
-  background: var(--mat-sys-surface);
-}
+:host { display: block; min-height: 100vh; color: var(--mat-sys-on-surface); background: var(--mat-sys-surface); }
 
 .trends-page { min-height: 100%; }
 .trends-topbar { height: 68px; position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; border-bottom: 1px solid var(--mat-sys-outline-variant); background: color-mix(in srgb, var(--mat-sys-surface) 94%, transparent); backdrop-filter: blur(14px); }
@@ -106,13 +98,13 @@ h1 { margin: 0; color: var(--mat-sys-on-surface); font-size: 1.9rem; font-weight
 .open-mark { color: var(--mat-sys-primary); text-align: right; }
 
 @media (max-width: 900px) {
-  :host { left: 208px; }
+
   .trends-topbar { padding: 0 24px; }
   .trends-content { width: calc(100% - 48px); margin-top: 34px; }
 }
 
 @media (max-width: 620px) {
-  :host { left: 64px; }
+
   .trends-topbar { height: 60px; padding: 0 14px; }
   .local-status { font-size: 0; }
   .trends-content { width: calc(100% - 26px); margin-top: 28px; }
