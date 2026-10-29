@@ -149,6 +149,22 @@ try
     await db.Database.ExecuteSqlRawAsync("DROP TRIGGER reject_first_index");
 
     var newWatch = Path.Combine(temp, "new-watch"); Directory.CreateDirectory(newWatch);
+    var mountRoot = Path.Combine(temp, "mounts"); Directory.CreateDirectory(mountRoot);
+    Check(GarminWatchDiscovery.FindActivityDirectory(mountRoot) is null,
+        "Configured watch roots can start without a connected watch");
+    var device = Path.Combine(mountRoot, "user", "watch-volume");
+    var deviceActivities = Path.Combine(device, "GARMIN", "Activity");
+    Directory.CreateDirectory(deviceActivities);
+    Check(GarminWatchDiscovery.FindActivityDirectory(mountRoot) == deviceActivities
+        && GarminWatchDiscovery.FindActivityDirectory(deviceActivities) == deviceActivities,
+        "Configured roots find both mounted watches and explicit activity directories");
+    var unmounted = Path.Combine(temp, "unmounted-watch");
+    Directory.Move(device, unmounted);
+    Check(GarminWatchDiscovery.FindActivityDirectory(mountRoot) is null,
+        "Watch discovery does not cache a disconnected device");
+    Directory.Move(unmounted, device);
+    Check(GarminWatchDiscovery.FindActivityDirectory(mountRoot) == deviceActivities,
+        "Watch discovery finds a reconnected device");
     var runFit = CreateFit(Dynastream.Fit.Sport.Running, Dynastream.Fit.SubSport.Generic);
     var swimFit = CreateFit(Dynastream.Fit.Sport.Swimming, Dynastream.Fit.SubSport.Generic);
     await File.WriteAllBytesAsync(Path.Combine(newWatch, "run.fit"), runFit);

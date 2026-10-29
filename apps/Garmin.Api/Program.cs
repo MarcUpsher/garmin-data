@@ -21,6 +21,17 @@ builder.Services.AddCors(options => options.AddPolicy("local-angular", policy =>
 
 var app = builder.Build();
 app.UseCors("local-angular");
+// Published containers include Angular's production build in wwwroot. The
+// separate Angular development server remains usable when those files are absent.
+var webRoot = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+if (File.Exists(Path.Combine(webRoot, "index.html")))
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+    app.MapFallbackToFile("index.html");
+}
+// Unknown API routes must return 404 instead of the Angular entry page.
+app.Map("/api/{**path}", () => Results.NotFound());
 var syncLock = new SemaphoreSlim(1, 1);
 
 app.MapGet("/api/activities/{id:long}", async (
@@ -564,7 +575,8 @@ app.MapPost("/api/sync", async (GarminDbContext db, CancellationToken cancellati
 
     try
     {
-        var activityDirectory = FindMountedGarminActivityDirectory();
+        var activityDirectory = GarminWatchDiscovery.FindActivityDirectory(
+            Environment.GetEnvironmentVariable("GARMIN_WATCH_ROOTS"));
         if (activityDirectory is null)
             return Results.Conflict(new { message = "No mounted Garmin watch found. Plug it in, choose File Transfer on the watch if prompted, and wait for GARMIN/Activity to appear in the file manager." });
 
@@ -656,55 +668,6 @@ static (double? Gain, double? Loss, double? Net) EstimateElevationChange(IReadOn
         }
     }
     return (gain, loss, valid[^1] - valid[0]);
-}
-
-static string? FindMountedGarminActivityDirectory()
-{
-    var user = Environment.UserName;
-    var runtimeDirectory = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
-    var roots = new[]
-        {
-            $"/run/media/{user}", $"/media/{user}", "/media",
-            runtimeDirectory is null ? null : Path.Combine(runtimeDirectory, "gvfs")
-        }
-        .Where(path => path is not null)
-        .Select(path => path!)
-        .Where(Directory.Exists)
-        .Distinct(StringComparer.Ordinal)
-        .ToArray();
-
-    foreach (var root in roots)
-    {
-        var candidates = new List<string> { root };
-        try
-        {
-            var pending = new Queue<(string Path, int Depth)>();
-            pending.Enqueue((root, 0));
-            while (pending.TryDequeue(out var current) && current.Depth < 5)
-            {
-                foreach (var child in Directory.EnumerateDirectories(current.Path))
-                {
-                    candidates.Add(child);
-                    pending.Enqueue((child, current.Depth + 1));
-                }
-            }
-        }
-        catch (UnauthorizedAccessException) { }
-        catch (IOException) { }
-
-        foreach (var candidate in candidates)
-        {
-            var activityDirectory = Path.Combine(candidate, "GARMIN", "Activity");
-            if (Directory.Exists(activityDirectory)) return activityDirectory;
-            if (Path.GetFileName(candidate).Equals("GARMIN", StringComparison.OrdinalIgnoreCase))
-            {
-                activityDirectory = Path.Combine(candidate, "Activity");
-                if (Directory.Exists(activityDirectory)) return activityDirectory;
-            }
-        }
-    }
-
-    return null;
 }
 
 internal sealed record ActivityListItem(

@@ -3,6 +3,8 @@
 **/obj/
 **/node_modules/
 **/.angular/
+**/__pycache__/
+*.pyc
 .vs/
 
 # Local databases and Garmin activity exports contain personal health data

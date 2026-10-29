@@ -1,0 +1,28 @@
+# Enable with COMPOSE_FILE=compose.yaml:compose.linux.yaml in the ignored .env file.
+services:
+  app:
+    user: "${GARMIN_UID:?Set GARMIN_UID to your Linux user ID}:${GARMIN_GID:?Set GARMIN_GID to your Linux group ID}"
+    environment:
+      GARMIN_WATCH_ROOTS: /watch
+    volumes:
+      # Same target replaces the base Compose file's named database volume.
+      - type: bind
+        source: ${GARMIN_DATA_DIRECTORY:-./local-data}
+        target: /data
+        bind:
+          create_host_path: false
+      # Mount the parent, so watches attached after startup become visible too.
+      # New propagated submounts inherit host flags; read_only covers the parent
+      # and existing mounts, not future USB mounts. The importer only reads files.
+      - type: bind
+        source: ${GARMIN_WATCH_MOUNT_ROOT:-/run/media}
+        target: /watch
+        read_only: true
+        bind:
+          propagation: rslave
+      - type: bind
+        source: ${GARMIN_IMPORT_DIRECTORY:-./local-data/imports}
+        target: /imports
+        read_only: true
+        bind:
+          create_host_path: false
